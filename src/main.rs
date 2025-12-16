@@ -21,6 +21,8 @@ fn main() {
         tray_icon: ui::tray::init_tray_icon(),
     };
 
+    ui::tray::start_tray_icon();
+
     // Open ui
     ui::windows::run_ui();
 }
