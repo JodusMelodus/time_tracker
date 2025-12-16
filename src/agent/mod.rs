@@ -1,6 +1,7 @@
 use std::sync::mpsc::Receiver;
 
 pub mod input;
+pub mod tasks;
 
 pub enum AgentCommand {
     StartTask(String),
