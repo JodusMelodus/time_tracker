@@ -1,3 +1,5 @@
+use std::sync::mpsc;
+
 use crate::{agent, app::state::AppState, storage, ui};
 
 pub fn start() {
@@ -11,12 +13,16 @@ pub fn start() {
     println!("Input listener running. Press Ctrl+C to exit.");
 
     let _app_state = AppState {
-        tray_icon: ui::tray::init_tray_icon(),
+        _tray_icon: ui::tray::init_tray_icon(),
     };
-    
+
+    let (agent_tx, agent_rx) = mpsc::channel();
+
+    agent::start_agent(agent_rx);
+        
     // Initialize tray icon
     ui::tray::start_tray_icon();
 
     // Open ui
-    ui::windows::run_ui();
+    ui::windows::run_ui(agent_tx);
 }

@@ -1,7 +1,9 @@
-use std::sync::Arc;
+use std::sync::{Arc, mpsc::Sender};
 
 use eframe::egui;
 use egui::IconData;
+
+use crate::agent;
 
 fn load_icon(path: &str) -> IconData {
     let (icon_rgba, icon_width, icon_height) = {
@@ -18,7 +20,7 @@ fn load_icon(path: &str) -> IconData {
     }
 }
 
-pub fn run_ui() {
+pub fn run_ui(agent_tx: Sender<agent::AgentCommand>) {
     let icon = load_icon("icon.ico");
     let mut options = eframe::NativeOptions::default();
     options.viewport.icon = Some(Arc::new(icon));
@@ -26,22 +28,26 @@ pub fn run_ui() {
     eframe::run_native(
         "Time Tracker",
         options,
-        Box::new(|_cc| Ok(Box::new(MyApp {}))),
+        Box::new(|_cc| Ok(Box::new(MyApp { agent_tx }))),
     )
     .unwrap();
 }
 
-struct MyApp {}
+struct MyApp {
+    agent_tx: Sender<agent::AgentCommand>,
+}
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Tasks");
             if ui.button("Start Task").clicked() {
-                println!("Start task clicked");
+                self.agent_tx
+                    .send(agent::AgentCommand::StartTask("test".to_string()))
+                    .unwrap();
             }
             if ui.button("Stop Task").clicked() {
-                println!("Stop task clicked");
+                self.agent_tx.send(agent::AgentCommand::StopTask).unwrap();
             }
         });
     }

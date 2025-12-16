@@ -1,5 +1,5 @@
 use tray_icon::TrayIcon;
 
 pub struct AppState {
-    pub tray_icon: TrayIcon,
+    pub _tray_icon: TrayIcon,
 }
