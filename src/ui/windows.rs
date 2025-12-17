@@ -1,7 +1,7 @@
 use std::sync::{Arc, mpsc::Sender};
 
 use eframe::{NativeOptions, egui};
-use egui::{Align, Align2, IconData, Layout, MenuBar, Order, ViewportBuilder, Window, menu};
+use egui::{Align, Align2, Context, IconData, Layout, MenuBar, Order, ViewportBuilder, Window};
 use rusqlite::Connection;
 
 use crate::agent;
@@ -43,7 +43,7 @@ pub fn run_ui(agent_tx: Sender<agent::AgentCommand>) {
                 tasks: agent::tasks::get_all_tasks(&db_connection).unwrap(),
                 show_new_task_dialog: false,
                 new_task: agent::tasks::Task {
-                    id: 0,
+                    _id: 0,
                     name: "".to_string(),
                     description: "".to_string(),
                 },
@@ -130,41 +130,18 @@ impl eframe::App for MyApp {
                                     &self.new_task,
                                 ) {
                                     Ok(_) => {
-                                        Window::new("Successful")
-                                            .collapsible(false)
-                                            .fixed_size([200.0, 50.0])
-                                            .resizable(false)
-                                            .order(Order::Foreground)
-                                            .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
-                                            .show(ctx, |ui| {
-                                                ui.label("Successfully added the new task");
-                                                ui.separator();
-                                                ui.horizontal(|ui| {
-                                                    ui.with_layout(
-                                                        Layout::right_to_left(Align::Max),
-                                                        |ui| ui.button("OK"),
-                                                    );
-                                                })
-                                            });
-                                        self.tasks = agent::tasks::get_all_tasks(&self.db_connection).unwrap();
+                                        display_message(
+                                            ctx,
+                                            "Successful",
+                                            "Successfully added new task",
+                                            &["OK"],
+                                        );
+                                        self.tasks =
+                                            agent::tasks::get_all_tasks(&self.db_connection)
+                                                .unwrap();
                                     }
                                     Err(e) => {
-                                        Window::new("Error")
-                                            .collapsible(false)
-                                            .fixed_size([200.0, 50.0])
-                                            .resizable(false)
-                                            .order(Order::Foreground)
-                                            .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
-                                            .show(ctx, |ui| {
-                                                ui.label(format!("{:?}", e));
-                                                ui.separator();
-                                                ui.horizontal(|ui| {
-                                                    ui.with_layout(
-                                                        Layout::right_to_left(Align::Max),
-                                                        |ui| ui.button("OK"),
-                                                    );
-                                                })
-                                            });
+                                        display_message(ctx, "Error", &format!("{:?}", e), &[]);
                                     }
                                 }
                                 self.show_new_task_dialog = false;
@@ -174,10 +151,35 @@ impl eframe::App for MyApp {
                 });
         } else {
             self.new_task = agent::tasks::Task {
-                id: 0,
+                _id: 0,
                 name: "".to_string(),
                 description: "".to_string(),
             };
         }
     }
+}
+
+fn display_message(ctx: &Context, title: &str, message: &str, buttons: &[&str]) -> isize {
+    Window::new(title)
+        .collapsible(false)
+        .fixed_size([200.0, 50.0])
+        .resizable(false)
+        .order(Order::Foreground)
+        .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
+        .show(ctx, |ui| {
+            ui.label(message);
+            ui.separator();
+            ui.horizontal(|ui| {
+                ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                    for (i, button) in buttons.iter().enumerate() {
+                        if ui.button(*button).clicked() {
+                            return i as isize;
+                        }
+                    }
+
+                    return -1;
+                });
+            })
+        });
+    -1
 }
