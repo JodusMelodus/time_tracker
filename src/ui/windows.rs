@@ -1,13 +1,17 @@
-use std::sync::{Arc, mpsc::Sender};
+use std::sync::{
+    Arc,
+    mpsc::{Receiver, Sender},
+};
 
 use eframe::{NativeOptions, egui};
 use egui::{
-    Align, Align2, Color32, Context, IconData, Layout, MenuBar, Order, ScrollArea, Slider,
-    ViewportBuilder, Window, panel::TopBottomSide,
+    Align, Align2, CentralPanel, Color32, Context, IconData, Layout, MenuBar, Order,
+    ScrollArea, Slider, TopBottomPanel, ViewportBuilder, ViewportCommand, Window,
+    panel::TopBottomSide,
 };
 use rusqlite::Connection;
 
-use crate::agent;
+use crate::{agent, app};
 
 fn load_icon(path: &str) -> IconData {
     let (icon_rgba, icon_width, icon_height) = {
@@ -24,7 +28,7 @@ fn load_icon(path: &str) -> IconData {
     }
 }
 
-pub fn run_ui(agent_tx: Sender<agent::AgentCommand>) {
+pub fn run_ui(agent_tx: Sender<agent::AgentCommand>, agent_rx: Receiver<agent::AgentCommand>) {
     let db_connection = Connection::open("data/sessions.db").unwrap();
 
     let icon = load_icon("icon.ico");
@@ -43,10 +47,13 @@ pub fn run_ui(agent_tx: Sender<agent::AgentCommand>) {
         Box::new(|_cc| {
             Ok(Box::new(MyApp {
                 agent_tx,
+                agent_rx,
                 tasks: agent::tasks::get_all_tasks(&db_connection).unwrap(),
                 show_new_task_dialog: false,
                 new_task: agent::tasks::Task::default(),
                 db_connection,
+                last_user_activity_time_stamp: chrono::Utc::now(),
+                user_state: app::types::UserState::Active,
             }))
         }),
     )
@@ -55,19 +62,47 @@ pub fn run_ui(agent_tx: Sender<agent::AgentCommand>) {
 
 struct MyApp {
     agent_tx: Sender<agent::AgentCommand>,
+    agent_rx: Receiver<agent::AgentCommand>,
     tasks: Vec<agent::tasks::Task>,
     show_new_task_dialog: bool,
     new_task: agent::tasks::Task,
     db_connection: Connection,
+    user_state: app::types::UserState,
+    last_user_activity_time_stamp: chrono::DateTime<chrono::Utc>,
 }
 
 impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::new(TopBottomSide::Top, "Menu Bar").show(ctx, |ui| {
+    fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
+        while let Ok(command) = self.agent_rx.try_recv() {
+            match command {
+                agent::AgentCommand::UserActive { time_stamp } => {
+                    self.user_state = app::types::UserState::Active;
+                    self.last_user_activity_time_stamp = time_stamp;
+                }
+                _ => {}
+            }
+        }
+
+        let idle_after = self.last_user_activity_time_stamp + chrono::Duration::seconds(5);
+        let now = chrono::Utc::now();
+
+        if self.user_state == app::types::UserState::Active {
+            if now >= idle_after {
+                self.user_state = app::types::UserState::Idle;
+                ctx.request_repaint();
+            } else {
+                let remaining = idle_after - now;
+                ctx.request_repaint_after(std::time::Duration::from_secs(
+                    remaining.num_seconds() as u64
+                ));
+            }
+        }
+
+        TopBottomPanel::new(TopBottomSide::Top, "Menu Bar").show(ctx, |ui| {
             MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Quit").clicked() {
-                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                        ui.ctx().send_viewport_cmd(ViewportCommand::Close);
                     }
                 });
                 ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
@@ -78,7 +113,7 @@ impl eframe::App for MyApp {
             });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        CentralPanel::default().show(ctx, |ui| {
             ui.group(|ui| {
                 ui.heading("Tasks");
                 ScrollArea::vertical().show(ui, |ui| {
@@ -95,7 +130,7 @@ impl eframe::App for MyApp {
                                     ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                                         match task.priority {
                                             0 => ui.colored_label(
-                                                Color32::GREEN,
+                                                Color32::DARK_GREEN,
                                                 agent::tasks::PRIORITY_LEVELS[task.priority],
                                             ),
                                             1 => ui.colored_label(
@@ -131,6 +166,24 @@ impl eframe::App for MyApp {
                         });
                     }
                 });
+            });
+        });
+
+        TopBottomPanel::new(TopBottomSide::Bottom, "Status Bar").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
+                    ui.colored_label(
+                        match self.user_state {
+                            app::types::UserState::Active => Color32::DARK_GREEN,
+                            app::types::UserState::Idle => Color32::DARK_GRAY,
+                        },
+                        match self.user_state {
+                            app::types::UserState::Active => "Active",
+                            app::types::UserState::Idle => "Idle",
+                        },
+                    );
+                });
+                ui.with_layout(Layout::right_to_left(egui::Align::Max), |_ui| {});
             });
         });
 
