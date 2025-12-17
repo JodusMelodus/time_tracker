@@ -1,7 +1,9 @@
 use std::sync::{Arc, mpsc::Sender};
 
 use eframe::{NativeOptions, egui};
-use egui::{Align, Align2, Context, IconData, Layout, MenuBar, Order, ViewportBuilder, Window};
+use egui::{
+    Align, Align2, Context, IconData, Layout, MenuBar, Order, ScrollArea, ViewportBuilder, Window,
+};
 use rusqlite::Connection;
 
 use crate::agent;
@@ -42,11 +44,7 @@ pub fn run_ui(agent_tx: Sender<agent::AgentCommand>) {
                 agent_tx,
                 tasks: agent::tasks::get_all_tasks(&db_connection).unwrap(),
                 show_new_task_dialog: false,
-                new_task: agent::tasks::Task {
-                    _id: 0,
-                    name: "".to_string(),
-                    description: "".to_string(),
-                },
+                new_task: agent::tasks::Task::default(),
                 db_connection,
             }))
         }),
@@ -80,28 +78,30 @@ impl eframe::App for MyApp {
 
             ui.group(|ui| {
                 ui.heading("Tasks");
-                for task in &mut self.tasks {
-                    ui.group(|ui| {
-                        ui.take_available_width();
-                        ui.horizontal(|ui| {
-                            ui.vertical(|ui| {
-                                ui.label(&task.name);
-                                ui.text_edit_multiline(&mut task.description);
-                            });
+                ScrollArea::vertical().show(ui, |ui| {
+                    for task in &mut self.tasks {
+                        ui.group(|ui| {
+                            ui.take_available_width();
+                            ui.horizontal(|ui| {
+                                ui.vertical(|ui| {
+                                    ui.label(&task.name);
+                                    ui.text_edit_multiline(&mut task.description);
+                                });
 
-                            ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
-                                if ui.button("Start").clicked() {
-                                    self.agent_tx
-                                        .send(agent::AgentCommand::StartTask(task.name.clone()))
-                                        .unwrap();
-                                }
-                                if ui.button("Stop").clicked() {
-                                    self.agent_tx.send(agent::AgentCommand::StopTask).unwrap();
-                                }
+                                ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                                    if ui.button("Start").clicked() {
+                                        self.agent_tx
+                                            .send(agent::AgentCommand::StartTask(task.name.clone()))
+                                            .unwrap();
+                                    }
+                                    if ui.button("Stop").clicked() {
+                                        self.agent_tx.send(agent::AgentCommand::StopTask).unwrap();
+                                    }
+                                });
                             });
                         });
-                    });
-                }
+                    }
+                });
             });
         });
 
@@ -150,11 +150,7 @@ impl eframe::App for MyApp {
                     });
                 });
         } else {
-            self.new_task = agent::tasks::Task {
-                _id: 0,
-                name: "".to_string(),
-                description: "".to_string(),
-            };
+            self.new_task = agent::tasks::Task::default();
         }
     }
 }

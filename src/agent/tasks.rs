@@ -29,3 +29,13 @@ pub fn add_new_task(conn: &Connection, task: &Task) -> Result<usize> {
         (&task.name, &task.description),
     )
 }
+
+impl Default for Task {
+    fn default() -> Self {
+        Task {
+            _id: 0,
+            name: "".to_string(),
+            description: "".to_string(),
+        }
+    }
+}
