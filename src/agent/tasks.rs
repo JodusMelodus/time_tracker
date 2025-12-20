@@ -1,11 +1,10 @@
 use rusqlite::{Connection, Result};
 
 pub struct Task {
-    pub _id: isize,
-    pub name: String,
-    pub description: String,
-    pub priority: usize,
-    pub in_progress: bool,
+    pub t_id: isize,
+    pub t_name: String,
+    pub t_description: String,
+    pub t_priority: usize,
 }
 
 pub const PRIORITY_LEVELS: &[&str] = &["Low", "Medium", "High"];
@@ -14,11 +13,10 @@ pub fn get_all_tasks(conn: &Connection) -> Result<Vec<Task>> {
     let mut statement = conn.prepare("SELECT * FROM tasks")?;
     let task_iter = statement.query_map([], |row| {
         Ok(Task {
-            _id: row.get(0)?,
-            name: row.get(1)?,
-            description: row.get(2)?,
-            priority: row.get(3)?,
-            in_progress: row.get(4)?,
+            t_id: row.get(0)?,
+            t_name: row.get(1)?,
+            t_description: row.get(2)?,
+            t_priority: row.get(3)?,
         })
     })?;
 
@@ -32,14 +30,13 @@ pub fn get_all_tasks(conn: &Connection) -> Result<Vec<Task>> {
 pub fn add_new_task(conn: &Connection, task: &Task) -> Result<usize> {
     conn.execute(
         "INSERT INTO tasks
-            (name, description, priority, in_progress)
+            (t_name, t_description, t_priority)
             VALUES
-            (?1, ?2, ?3, ?4)",
+            (?1, ?2, ?3)",
         (
-            &task.name,
-            &task.description,
-            &task.priority,
-            &task.in_progress,
+            &task.t_name,
+            &task.t_description,
+            &task.t_priority,
         ),
     )
 }
@@ -47,11 +44,10 @@ pub fn add_new_task(conn: &Connection, task: &Task) -> Result<usize> {
 impl Default for Task {
     fn default() -> Self {
         Task {
-            _id: 0,
-            name: "".to_string(),
-            description: "".to_string(),
-            priority: 0,
-            in_progress: false,
+            t_id: 0,
+            t_name: "".to_string(),
+            t_description: "".to_string(),
+            t_priority: 0,
         }
     }
 }

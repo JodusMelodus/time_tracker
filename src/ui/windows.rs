@@ -119,50 +119,52 @@ impl eframe::App for MyApp {
                             ui.take_available_width();
                             ui.horizontal(|ui| {
                                 ui.vertical(|ui| {
-                                    ui.label(&task.name);
-                                    ui.text_edit_multiline(&mut task.description);
+                                    ui.label(&task.t_name);
+                                    ui.text_edit_multiline(&mut task.t_description);
                                 });
 
                                 ui.vertical(|ui| {
                                     ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                                        match task.priority {
+                                        match task.t_priority {
                                             0 => ui.colored_label(
                                                 Color32::DARK_GREEN,
-                                                agent::tasks::PRIORITY_LEVELS[task.priority],
+                                                agent::tasks::PRIORITY_LEVELS[task.t_priority],
                                             ),
                                             1 => ui.colored_label(
                                                 Color32::YELLOW,
-                                                agent::tasks::PRIORITY_LEVELS[task.priority],
+                                                agent::tasks::PRIORITY_LEVELS[task.t_priority],
                                             ),
                                             2 => ui.colored_label(
                                                 Color32::RED,
-                                                agent::tasks::PRIORITY_LEVELS[task.priority],
+                                                agent::tasks::PRIORITY_LEVELS[task.t_priority],
                                             ),
                                             _ => ui.label(
-                                                agent::tasks::PRIORITY_LEVELS[task.priority],
+                                                agent::tasks::PRIORITY_LEVELS[task.t_priority],
                                             ),
                                         };
                                     });
 
                                     ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
-                                        match task.in_progress {
-                                            true => {
-                                                if ui.button("Stop").clicked() {
-                                                    self.agent_tx
-                                                        .send(agent::AgentCommand::StopTask)
-                                                        .unwrap();
-                                                }
-                                            }
-                                            false => {
-                                                if ui.button("Start").clicked() {
-                                                    self.agent_tx
-                                                        .send(agent::AgentCommand::StartTask {
-                                                            name: task.name.clone(),
-                                                        })
-                                                        .unwrap();
-                                                }
-                                            }
-                                        }
+                                        // match task.in_progress {
+                                        //     true => {
+                                        //         if ui.button("Stop").clicked() {
+                                        //             self.agent_tx
+                                        //                 .send(agent::AgentCommand::StopTask)
+                                        //                 .unwrap();
+                                        //         }
+                                        //     }
+                                        //     false => {
+                                        //         if ui.button("Start").clicked() {
+                                        //             self.agent_tx
+                                        //                 .send(agent::AgentCommand::StartTask {
+                                        //                     name: task.t_name.clone(),
+                                        //                 })
+                                        //                 .unwrap();
+                                        //         }
+                                        //     }
+                                        // }
+
+                                        // TODO: fix start stop
                                     });
                                 });
                             });
@@ -204,15 +206,15 @@ impl MyApp {
             .order(Order::Foreground)
             .show(ctx, |ui| {
                 ui.label("Name:");
-                ui.text_edit_singleline(&mut self.new_task.name);
+                ui.text_edit_singleline(&mut self.new_task.t_name);
                 ui.label("Description:");
-                ui.text_edit_multiline(&mut self.new_task.description);
+                ui.text_edit_multiline(&mut self.new_task.t_description);
 
                 ui.horizontal(|ui| {
                     ui.label("Priority");
-                    let level = self.new_task.priority;
+                    let level = self.new_task.t_priority;
                     ui.add(
-                        Slider::new(&mut self.new_task.priority, 0..=2)
+                        Slider::new(&mut self.new_task.t_priority, 0..=2)
                             .step_by(0.33)
                             .text(agent::tasks::PRIORITY_LEVELS[level])
                             .show_value(false),
@@ -227,15 +229,11 @@ impl MyApp {
                         }
 
                         if ui.button("Add").clicked() {
-                            match agent::tasks::add_new_task(
-                                &self.db_connection,
-                                &self.new_task,
-                            ) {
+                            match agent::tasks::add_new_task(&self.db_connection, &self.new_task) {
                                 Ok(_) => {
                                     println!("Add new task");
                                     self.tasks =
-                                        agent::tasks::get_all_tasks(&self.db_connection)
-                                            .unwrap();
+                                        agent::tasks::get_all_tasks(&self.db_connection).unwrap();
                                 }
                                 Err(e) => {
                                     println!("Failed to add task: {}", e);

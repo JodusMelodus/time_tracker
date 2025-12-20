@@ -1,11 +1,20 @@
+PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    -- The name of the task
-    name TEXT NOT NULL DEFAULT '',
-    -- Short description
-    description TEXT NOT NULL DEFAULT '',
-    -- Priority of task [Low, Medium, High]
-    priority INTEGER NOT NULL DEFAULT 0,
-    -- 0 = Not currently working, 1 = currently working on the task
-    in_progress INTEGER NOT NULL DEFAULT 0
+  t_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  t_name TEXT NOT NULL,
+  t_description TEXT NOT NULL,
+  t_priority INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS users (
+  u_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  u_name TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sessions (
+  s_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  s_task INTEGER NOT NULL,
+  s_user INTEGER NOT NULL,
+  s_length INTEGER NOT NULL,
+  s_comment TEXT NOT NULL,
+  FOREIGN KEY (s_task) REFERENCES tasks(t_id) ON DELETE CASCADE,
+  FOREIGN KEY (s_user) REFERENCES users(u_id) ON DELETE CASCADE
 );
