@@ -24,17 +24,8 @@ pub fn start() {
     }
 
     // Initialize tray icon
-    {
-        let tray_command_tx = command_tx.clone();
-        thread::Builder::new()
-            .name("tray".to_string())
-            .spawn(move || {
-                println!("Starting tray thread...");
-                let tray = ui::tray::Tray::init_tray_icon(tray_command_tx.clone());
-                tray.start_tray_icon();
-            })
-            .expect("Failed to spawn tray thread");
-    }
+    println!("Starting tray thread...");
+    let _tray = ui::tray::init_tray_icon(command_tx.clone());
 
     // Open ui
     ui::window::run_ui(command_tx, event_rx);

@@ -38,15 +38,9 @@ impl AgentState {
 }
 
 pub enum AgentCommand {
-    StartSession {
-        id: i64,
-    },
-    EndSession {
-        comment: String,
-    },
-    AddTask {
-        task: agent::tasks::Task,
-    },
+    StartSession { id: i64 },
+    EndSession { comment: String },
+    AddTask { task: agent::tasks::Task },
     RequestTaskList,
     RequestTaskState,
     Quit,
