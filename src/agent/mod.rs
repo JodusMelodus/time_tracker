@@ -60,42 +60,36 @@ pub fn start_agent(command_rx: Receiver<AgentCommand>, event_tx: Sender<ui::UIEv
     println!("SQLite databse initialized!");
     let mut agent_state = agent::AgentState::new(db_connection);
 
-    std::thread::spawn(move || {
-        loop {
-            while let Ok(event) = command_rx.try_recv() {
-                match event {
-                    AgentCommand::StartSession { id } => {
-                        agent_state.task_in_progress = true;
-                        agent_state.session = agent::sessions::Session::default();
-                        agent_state.session.s_task = id;
-                    }
-                    AgentCommand::EndSession { comment } => {
-                        agent_state.task_in_progress = false;
-                        let end_time = Instant::now();
-                        agent_state.session.s_duration =
-                            (end_time - agent_state.start_time).as_secs();
-                        agent_state.session.s_comment = comment;
-                        agent::sessions::save_session(
-                            &agent_state.db_connection,
-                            &agent_state.session,
-                        )
-                        .unwrap();
-                    }
-                    AgentCommand::AddTask { task } => {
-                        agent::tasks::add_new_task(&agent_state.db_connection, &task).unwrap();
-                    }
-                    AgentCommand::RequestTaskList => {
-                        let task_list =
-                            agent::tasks::get_all_tasks(&agent_state.db_connection).unwrap();
-                        event_tx.send(ui::UIEvent::TaskList { task_list }).unwrap();
-                    }
-                    AgentCommand::RequestTaskState => {
-                        let state = agent_state.task_in_progress;
-                        event_tx.send(ui::UIEvent::ProgressState { state }).unwrap();
-                    }
-                    _ => (),
+    loop {
+        while let Ok(event) = command_rx.try_recv() {
+            match event {
+                AgentCommand::StartSession { id } => {
+                    agent_state.task_in_progress = true;
+                    agent_state.session = agent::sessions::Session::default();
+                    agent_state.session.s_task = id;
                 }
+                AgentCommand::EndSession { comment } => {
+                    agent_state.task_in_progress = false;
+                    let end_time = Instant::now();
+                    agent_state.session.s_duration = (end_time - agent_state.start_time).as_secs();
+                    agent_state.session.s_comment = comment;
+                    agent::sessions::save_session(&agent_state.db_connection, &agent_state.session)
+                        .unwrap();
+                }
+                AgentCommand::AddTask { task } => {
+                    agent::tasks::add_new_task(&agent_state.db_connection, &task).unwrap();
+                }
+                AgentCommand::RequestTaskList => {
+                    let task_list =
+                        agent::tasks::get_all_tasks(&agent_state.db_connection).unwrap();
+                    event_tx.send(ui::UIEvent::TaskList { task_list }).unwrap();
+                }
+                AgentCommand::RequestTaskState => {
+                    let state = agent_state.task_in_progress;
+                    event_tx.send(ui::UIEvent::ProgressState { state }).unwrap();
+                }
+                _ => (),
             }
         }
-    });
+    }
 }

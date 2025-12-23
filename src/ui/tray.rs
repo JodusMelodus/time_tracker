@@ -38,21 +38,19 @@ impl Tray {
     }
 
     pub fn start_tray_icon(self) {
-        std::thread::spawn(move || {
-            let menu_event_receiver = MenuEvent::receiver();
+        let menu_event_receiver = MenuEvent::receiver();
 
-            loop {
-                while let Ok(event) = menu_event_receiver.try_recv() {
-                    match event.id.0.as_str() {
-                        "quit" => {
-                            self.agent_tx.send(agent::AgentCommand::Quit).unwrap();
-                        }
-                        _ => eprintln!("Unknown menu item"),
+        loop {
+            while let Ok(event) = menu_event_receiver.try_recv() {
+                match event.id.0.as_str() {
+                    "quit" => {
+                        self.agent_tx.send(agent::AgentCommand::Quit).unwrap();
                     }
+                    _ => eprintln!("Unknown menu item"),
                 }
-
-                std::thread::sleep(std::time::Duration::from_millis(50));
             }
-        });
+
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
     }
 }
