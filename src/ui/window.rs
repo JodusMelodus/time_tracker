@@ -155,8 +155,9 @@ impl eframe::App for MyApp {
                             ui.take_available_width();
                             ui.horizontal(|ui| {
                                 ui.vertical(|ui| {
-                                    ui.label(&task.t_name);
-                                    ui.text_edit_multiline(&mut task.t_description);
+                                    ui.label(&task.t_name).on_hover_text("Name");
+                                    ui.text_edit_multiline(&mut self.session_comment)
+                                        .on_hover_text("Comment");
                                 });
 
                                 ui.vertical(|ui| {
@@ -240,8 +241,6 @@ impl MyApp {
             .show(ctx, |ui| {
                 ui.label("Name:");
                 ui.text_edit_singleline(&mut self.new_task.t_name);
-                ui.label("Description:");
-                ui.text_edit_multiline(&mut self.new_task.t_description);
 
                 ui.horizontal(|ui| {
                     ui.label("Priority");

@@ -4,7 +4,6 @@ use rusqlite::{Connection, Result};
 pub struct Task {
     pub t_id: i64,
     pub t_name: String,
-    pub t_description: String,
     pub t_priority: usize,
 }
 
@@ -16,8 +15,7 @@ pub fn get_all_tasks(conn: &Connection) -> Result<Vec<Task>> {
         Ok(Task {
             t_id: row.get(0)?,
             t_name: row.get(1)?,
-            t_description: row.get(2)?,
-            t_priority: row.get(3)?,
+            t_priority: row.get(2)?,
         })
     })?;
 
@@ -31,10 +29,10 @@ pub fn get_all_tasks(conn: &Connection) -> Result<Vec<Task>> {
 pub fn add_new_task(conn: &Connection, task: &Task) -> Result<usize> {
     conn.execute(
         "INSERT INTO tasks
-            (t_name, t_description, t_priority)
+            (t_name, t_priority)
             VALUES
-            (?1, ?2, ?3)",
-        (&task.t_name, &task.t_description, &task.t_priority),
+            (?1, ?2)",
+        (&task.t_name, &task.t_priority),
     )
 }
 
@@ -43,7 +41,6 @@ impl Default for Task {
         Task {
             t_id: 1,
             t_name: "".to_string(),
-            t_description: "".to_string(),
             t_priority: 0,
         }
     }

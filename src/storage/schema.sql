@@ -2,7 +2,6 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS tasks (
   t_id INTEGER PRIMARY KEY AUTOINCREMENT,
   t_name TEXT NOT NULL,
-  t_description TEXT NOT NULL,
   t_priority INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS users (
