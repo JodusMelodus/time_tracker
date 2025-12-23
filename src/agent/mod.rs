@@ -3,7 +3,7 @@ use std::{
     time::Instant,
 };
 
-use crate::{agent, app};
+use crate::{agent, app, ui};
 
 pub mod input;
 pub mod sessions;
@@ -27,13 +27,13 @@ pub enum AgentCommand {
 }
 
 pub fn start_agent(
-    agent_rx: Receiver<AgentCommand>,
-    app_tx: Sender<app::AppCommand>,
+    command_rx: Receiver<AgentCommand>,
+    event_tx: Sender<ui::UIEvent>,
     mut app_state: app::types::AppState,
 ) {
     std::thread::spawn(move || {
         loop {
-            while let Ok(event) = agent_rx.try_recv() {
+            while let Ok(event) = command_rx.try_recv() {
                 match event {
                     AgentCommand::StartSession { id } => {
                         app_state.task_in_progress = true;
@@ -54,14 +54,14 @@ pub fn start_agent(
                     AgentCommand::RequestTaskList => {
                         let task_list =
                             agent::tasks::get_all_tasks(&app_state.db_connection).unwrap();
-                        app_tx
-                            .send(app::AppCommand::TaskList { task_list })
+                        event_tx
+                            .send(ui::UIEvent::TaskList { task_list })
                             .unwrap();
                     }
                     AgentCommand::RequestTaskState => {
                         let state = app_state.task_in_progress;
-                        app_tx
-                            .send(app::AppCommand::ProgressState { state })
+                        event_tx
+                            .send(ui::UIEvent::ProgressState { state })
                             .unwrap();
                     }
                     _ => (),

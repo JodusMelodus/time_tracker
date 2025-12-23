@@ -9,7 +9,7 @@ use egui::{
     Slider, TopBottomPanel, ViewportBuilder, ViewportCommand, Window, panel::TopBottomSide,
 };
 
-use crate::{agent, app};
+use crate::{agent, app, ui};
 
 fn load_icon(path: &str) -> IconData {
     let (rgba, width, height) = {
@@ -26,7 +26,7 @@ fn load_icon(path: &str) -> IconData {
     }
 }
 
-pub fn run_ui(agent_tx: Sender<agent::AgentCommand>, app_rx: Receiver<app::AppCommand>) {
+pub fn run_ui(command_tx: Sender<agent::AgentCommand>, event_rx: Receiver<ui::UIEvent>) {
     let icon = load_icon("icon.ico");
     let mut options = NativeOptions {
         viewport: ViewportBuilder::default()
@@ -41,8 +41,8 @@ pub fn run_ui(agent_tx: Sender<agent::AgentCommand>, app_rx: Receiver<app::AppCo
         options,
         Box::new(|_cc| {
             Ok(Box::new(MyApp {
-                agent_tx,
-                app_rx,
+                agent_tx: command_tx,
+                app_rx: event_rx,
                 new_task: agent::tasks::Task::default(),
                 task_state: false,
                 session_comment: "".to_string(),
@@ -58,7 +58,7 @@ pub fn run_ui(agent_tx: Sender<agent::AgentCommand>, app_rx: Receiver<app::AppCo
 
 struct MyApp {
     agent_tx: Sender<agent::AgentCommand>,
-    app_rx: Receiver<app::AppCommand>,
+    app_rx: Receiver<ui::UIEvent>,
     new_task: agent::tasks::Task,
     task_state: bool,
     session_comment: String,
@@ -73,8 +73,8 @@ impl eframe::App for MyApp {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         while let Ok(event) = self.app_rx.try_recv() {
             match event {
-                app::AppCommand::TaskList { task_list } => self.tasks = task_list,
-                app::AppCommand::ProgressState { state } => self.task_state = state,
+                ui::UIEvent::TaskList { task_list } => self.tasks = task_list,
+                ui::UIEvent::ProgressState { state } => self.task_state = state,
             }
         }
 

@@ -9,17 +9,17 @@ pub fn start() {
     println!("SQLite databse initialized!");
 
     let app_state = app::types::AppState::new(db_connection);
-    let (agent_tx, agent_rx) = mpsc::channel();
-    let (app_tx, app_rx) = mpsc::channel();
+    let (command_tx, command_rx) = mpsc::channel();
+    let (event_tx, event_rx) = mpsc::channel();
 
     // Start local agent to continuesly get events
-    agent::input::start_input_listener(agent_tx.clone());
+    agent::input::start_input_listener(command_tx.clone());
     println!("Input listener running. Press Ctrl+C to exit.");
-    agent::start_agent(agent_rx, app_tx, app_state);
+    agent::start_agent(command_rx, event_tx, app_state);
 
     // Initialize tray icon
     ui::tray::start_tray_icon();
 
     // Open ui
-    ui::windows::run_ui(agent_tx, app_rx);
+    ui::window::run_ui(command_tx, event_rx);
 }
