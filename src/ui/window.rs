@@ -1,6 +1,9 @@
-use std::sync::{
-    Arc,
-    mpsc::{Receiver, Sender},
+use std::{
+    sync::{
+        Arc,
+        mpsc::{Receiver, Sender},
+    },
+    time::Duration,
 };
 
 use eframe::{NativeOptions, egui};
@@ -10,7 +13,7 @@ use egui::{
     panel::TopBottomSide,
 };
 
-use crate::{agent, ui};
+use crate::{agent, ui, utils};
 
 fn load_icon(path: &str) -> IconData {
     let (rgba, width, height) = {
@@ -47,6 +50,7 @@ pub fn run_ui(command_tx: Sender<agent::AgentCommand>, event_rx: Receiver<ui::UI
                 new_task: agent::tasks::Task::default(),
                 task_state: false,
                 session_comment: "".to_string(),
+                elapsed_time: Duration::ZERO,
                 tasks: Vec::new(),
                 show_new_task_dialog: false,
                 last_user_activity_time_stamp: chrono::Utc::now(),
@@ -63,6 +67,7 @@ struct MyApp {
     new_task: agent::tasks::Task,
     task_state: bool,
     session_comment: String,
+    elapsed_time: Duration,
 
     tasks: Vec<agent::tasks::Task>,
     show_new_task_dialog: bool,
@@ -78,10 +83,20 @@ impl eframe::App for MyApp {
                 ui::UIEvent::UserActivity { time_stamp } => {
                     self.user_state = agent::UserState::Active;
                     self.last_user_activity_time_stamp = time_stamp;
+                    self.agent_tx
+                        .send(agent::AgentCommand::UpdateStopWatch { running: true })
+                        .unwrap();
                 }
                 ui::UIEvent::ProgressState { state } => self.task_state = state,
+                ui::UIEvent::ElapsedTime { elapsed } => self.elapsed_time = elapsed,
             }
+
+            ctx.request_repaint();
         }
+
+        self.agent_tx
+            .send(agent::AgentCommand::ElapsedTime)
+            .unwrap();
 
         let idle_after = self.last_user_activity_time_stamp + chrono::Duration::seconds(5);
         let now = chrono::Utc::now();
@@ -89,6 +104,9 @@ impl eframe::App for MyApp {
         if self.user_state == agent::UserState::Active {
             if now >= idle_after {
                 self.user_state = agent::UserState::Idle;
+                self.agent_tx
+                    .send(agent::AgentCommand::UpdateStopWatch { running: false })
+                    .unwrap();
                 ctx.request_repaint();
             } else {
                 let remaining = idle_after - now;
@@ -145,6 +163,8 @@ impl eframe::App for MyApp {
                             .send(agent::AgentCommand::RequestTaskList)
                             .unwrap();
                     }
+
+                    ui.label(utils::time::format_duration(self.elapsed_time));
                 });
             });
         });

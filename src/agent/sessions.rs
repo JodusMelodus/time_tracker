@@ -2,7 +2,7 @@ use rusqlite::{Connection, Result};
 
 #[derive(Debug)]
 pub struct Session {
-    pub s_id: i64,
+    pub _s_id: i64,
     pub s_task: i64,
     pub s_user: i64,
     pub s_duration: u64,
@@ -12,7 +12,7 @@ pub struct Session {
 impl Default for Session {
     fn default() -> Self {
         Session {
-            s_id: 1,
+            _s_id: 1,
             s_task: 1,
             s_user: 1,
             s_duration: 0,

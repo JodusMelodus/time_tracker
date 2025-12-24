@@ -1,7 +1,4 @@
-use std::{
-    sync::mpsc::{Receiver, Sender},
-    time::Instant,
-};
+use std::sync::mpsc::{Receiver, Sender};
 
 use rusqlite::Connection;
 
@@ -21,7 +18,7 @@ pub struct AgentState {
     pub db_connection: Connection,
 
     pub session: agent::sessions::Session,
-    pub start_time: Instant,
+    pub stop_watch: utils::time::StopWatch,
     pub task_in_progress: bool,
 }
 
@@ -31,7 +28,7 @@ impl AgentState {
             db_connection,
 
             session: agent::sessions::Session::default(),
-            start_time: Instant::now(),
+            stop_watch: utils::time::StopWatch::new(),
             task_in_progress: false,
         }
     }
@@ -44,13 +41,14 @@ pub enum AgentCommand {
     RequestTaskList,
     RequestTaskState,
     Quit,
+    UpdateStopWatch { running: bool },
+    ElapsedTime,
 }
 
 pub fn start_agent(command_rx: Receiver<AgentCommand>, event_tx: Sender<ui::UIEvent>) {
     let db_connection = storage::sqlite::init_db().unwrap();
     println!("SQLite databse initialized!");
     let mut agent_state = agent::AgentState::new(db_connection);
-    let stop_watch = utils::time::StopWatch::new();
 
     loop {
         while let Ok(event) = command_rx.try_recv() {
@@ -58,13 +56,17 @@ pub fn start_agent(command_rx: Receiver<AgentCommand>, event_tx: Sender<ui::UIEv
                 AgentCommand::StartSession { id } => {
                     agent_state.task_in_progress = true;
                     agent_state.session = agent::sessions::Session::default();
+                    agent_state.stop_watch.start();
                     agent_state.session.s_task = id;
                 }
                 AgentCommand::EndSession { comment } => {
                     agent_state.task_in_progress = false;
-                    let end_time = Instant::now();
-                    agent_state.session.s_duration = (end_time - agent_state.start_time).as_secs();
+                    agent_state.stop_watch.stop();
+                    let elapsed_time = agent_state.stop_watch.elapsed();
+                    agent_state.stop_watch.reset();
+
                     agent_state.session.s_comment = comment;
+                    agent_state.session.s_duration = elapsed_time.as_secs();
                     agent::sessions::save_session(&agent_state.db_connection, &agent_state.session)
                         .unwrap();
                 }
@@ -80,7 +82,20 @@ pub fn start_agent(command_rx: Receiver<AgentCommand>, event_tx: Sender<ui::UIEv
                     let state = agent_state.task_in_progress;
                     event_tx.send(ui::UIEvent::ProgressState { state }).unwrap();
                 }
-                _ => (),
+                AgentCommand::UpdateStopWatch { running } => {
+                    if agent_state.task_in_progress {
+                        match running {
+                            true => agent_state.stop_watch.start(),
+                            false => agent_state.stop_watch.stop(),
+                        }
+                    }
+                }
+                AgentCommand::ElapsedTime => event_tx
+                    .send(ui::UIEvent::ElapsedTime {
+                        elapsed: agent_state.stop_watch.elapsed(),
+                    })
+                    .unwrap(),
+                AgentCommand::Quit => todo!("Do this"),
             }
         }
     }
