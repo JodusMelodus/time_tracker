@@ -11,7 +11,7 @@ pub fn init_db() -> Result<Connection> {
         ",
     )?;
 
-    let schema = fs::read_to_string("src/storage/schema.sql").expect("Failed to read schema.sql");
+    let schema = fs::read_to_string("schema.sql").unwrap();
     conn.execute_batch(&schema)?;
     Ok(conn)
 }
