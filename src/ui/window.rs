@@ -13,7 +13,7 @@ use egui::{
     panel::TopBottomSide,
 };
 
-use crate::{agent, ui, utils};
+use crate::{agent, config, ui, utils};
 
 fn load_icon(path: &str) -> IconData {
     let (rgba, width, height) = {
@@ -30,7 +30,11 @@ fn load_icon(path: &str) -> IconData {
     }
 }
 
-pub fn run_ui(command_tx: Sender<agent::AgentCommand>, event_rx: Receiver<ui::UIEvent>) {
+pub fn run_ui(
+    command_tx: Sender<agent::AgentCommand>,
+    event_rx: Receiver<ui::UIEvent>,
+    settings: Arc<config::settings::Settings>,
+) {
     let icon = load_icon("icon.ico");
     let mut options = NativeOptions {
         viewport: ViewportBuilder::default()
@@ -51,6 +55,7 @@ pub fn run_ui(command_tx: Sender<agent::AgentCommand>, event_rx: Receiver<ui::UI
                 task_state: false,
                 session_comment: "".to_string(),
                 elapsed_time: Duration::ZERO,
+                settings,
                 tasks: Vec::new(),
                 show_new_task_dialog: false,
                 last_user_activity_time_stamp: chrono::Utc::now(),
@@ -68,6 +73,7 @@ struct MyApp {
     task_state: bool,
     session_comment: String,
     elapsed_time: Duration,
+    settings: Arc<config::settings::Settings>,
 
     tasks: Vec<agent::tasks::Task>,
     show_new_task_dialog: bool,
@@ -98,7 +104,8 @@ impl eframe::App for MyApp {
             .send(agent::AgentCommand::ElapsedTime)
             .unwrap();
 
-        let idle_after = self.last_user_activity_time_stamp + chrono::Duration::seconds(5);
+        let idle_after = self.last_user_activity_time_stamp
+            + chrono::Duration::seconds(self.settings.active_timeout_seconds.try_into().unwrap());
         let now = chrono::Utc::now();
 
         if self.user_state == agent::UserState::Active {

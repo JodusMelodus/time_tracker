@@ -1,8 +1,11 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{
+    Arc,
+    mpsc::{Receiver, Sender},
+};
 
 use rusqlite::Connection;
 
-use crate::{agent, storage, ui, utils};
+use crate::{agent, config, storage, ui, utils};
 
 pub mod input;
 pub mod sessions;
@@ -45,7 +48,11 @@ pub enum AgentCommand {
     ElapsedTime,
 }
 
-pub fn start_agent(command_rx: Receiver<AgentCommand>, event_tx: Sender<ui::UIEvent>) {
+pub fn start_agent(
+    command_rx: Receiver<AgentCommand>,
+    event_tx: Sender<ui::UIEvent>,
+    _settings: Arc<config::settings::Settings>,
+) {
     let db_connection = storage::sqlite::init_db().unwrap();
     println!("SQLite databse initialized!");
     let mut agent_state = agent::AgentState::new(db_connection);

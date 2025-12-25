@@ -11,8 +11,9 @@ image = "0.25.9"
 rdev = "0.5.3"
 reqwest = "0.12.26"
 rusqlite = { version = "0.37.0", features = ["bundled"] }
-serde = "1.0.228"
+serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 tokio = "1.48.0"
 tray-icon = "0.21.2"
 uuid = "1.19.0"
+dirs = "6.0.0"
