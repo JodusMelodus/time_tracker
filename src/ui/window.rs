@@ -87,9 +87,9 @@ impl eframe::App for MyApp {
                 ui::UIEvent::UserActivity { time_stamp } => {
                     self.user_state = agent::UserState::Active;
                     self.last_user_activity_time_stamp = time_stamp;
-                    self.agent_tx
-                        .send(agent::AgentCommand::UpdateStopWatch { running: true })
-                        .unwrap();
+                    let _ = self
+                        .agent_tx
+                        .send(agent::AgentCommand::UpdateStopWatch { running: true });
                 }
                 ui::UIEvent::ElapsedTime { elapsed } => self.elapsed_time = elapsed,
                 ui::UIEvent::Quit => ctx.send_viewport_cmd(ViewportCommand::Close),
@@ -98,10 +98,7 @@ impl eframe::App for MyApp {
             ctx.request_repaint();
         }
 
-        // FIX
-        self.agent_tx
-            .send(agent::AgentCommand::ElapsedTime)
-            .unwrap();
+        let _ = self.agent_tx.send(agent::AgentCommand::ElapsedTime);
 
         let idle_after = self.last_user_activity_time_stamp
             + chrono::Duration::seconds(self.settings.active_timeout_seconds.try_into().unwrap());
