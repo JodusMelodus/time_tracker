@@ -1,6 +1,7 @@
-use std::{sync::mpsc::Sender, thread};
+use std::thread;
 
 use chrono::Utc;
+use crossbeam_channel::Sender;
 use rdev::{Event, listen};
 
 use crate::ui;

@@ -11,4 +11,5 @@ pub enum UIEvent {
     TaskList { task_list: Vec<agent::tasks::Task> },
     UserActivity { time_stamp: DateTime<Utc> },
     ElapsedTime { elapsed: Duration },
+    Quit,
 }

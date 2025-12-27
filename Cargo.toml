@@ -4,16 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-chrono = "0.4.42"
-eframe = "0.33.3"
-egui = "0.33.3"
-image = "0.25.9"
-rdev = "0.5.3"
-reqwest = "0.12.26"
-rusqlite = { version = "0.37.0", features = ["bundled"] }
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.145"
-tokio = "1.48.0"
-tray-icon = "0.21.2"
-uuid = "1.19.0"
-dirs = "6.0.0"
+chrono = "0.4"
+eframe = "0.33"
+egui = "0.33"
+rdev = "0.5"
+rusqlite = { version = "0.37", features = ["bundled"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dirs = "6.0"
+crossbeam-channel = "0.5"
+winapi = "0.3"
+tray-icon = "0.21"
+image = "0.25"

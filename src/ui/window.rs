@@ -1,11 +1,9 @@
 use std::{
-    sync::{
-        Arc,
-        mpsc::{Receiver, Sender},
-    },
+    sync::{Arc, mpsc::Sender},
     time::Duration,
 };
 
+use crossbeam_channel::Receiver;
 use eframe::{NativeOptions, egui};
 use egui::{
     Align, Align2, CentralPanel, Color32, Context, CursorIcon, IconData, Layout, MenuBar, Order,
@@ -94,11 +92,13 @@ impl eframe::App for MyApp {
                         .unwrap();
                 }
                 ui::UIEvent::ElapsedTime { elapsed } => self.elapsed_time = elapsed,
+                ui::UIEvent::Quit => ctx.send_viewport_cmd(ViewportCommand::Close),
             }
 
             ctx.request_repaint();
         }
 
+        // FIX
         self.agent_tx
             .send(agent::AgentCommand::ElapsedTime)
             .unwrap();

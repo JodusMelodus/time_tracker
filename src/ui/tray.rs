@@ -4,10 +4,12 @@ use tray_icon::{
     Icon, TrayIcon, TrayIconBuilder,
     menu::{Menu, MenuEvent, MenuId, MenuItemBuilder},
 };
+#[cfg(target_os = "windows")]
+use winapi::um::winuser::{DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage};
 
-use crate::agent::{self, AgentCommand};
+use crate::agent::{self};
 
-pub fn init_tray_icon(agent_tx: Sender<agent::AgentCommand>) -> TrayIcon {
+pub fn init_tray_icon() -> TrayIcon {
     let icon = Icon::from_path("icon.ico", Some((128, 128))).unwrap();
     let tray_menu = build_tray_menu();
 
@@ -17,25 +19,47 @@ pub fn init_tray_icon(agent_tx: Sender<agent::AgentCommand>) -> TrayIcon {
         .with_icon(icon)
         .build()
         .unwrap();
-
-    std::thread::Builder::new()
-        .name("tray-menu".to_string())
-        .spawn(move || {
-            let menu_event_receiver = MenuEvent::receiver();
-
-            loop {
-                while let Ok(event) = menu_event_receiver.try_recv() {
-                    match event.id.0.as_str() {
-                        "quit" => agent_tx.send(AgentCommand::Quit).unwrap(),
-                        _ => eprintln!("Unknown menu item"),
-                    }
-                }
-                std::thread::sleep(Duration::from_millis(100));
-            }
-        })
-        .unwrap();
-
     tray
+}
+
+pub fn start_tray_listener(command_tx: Sender<agent::AgentCommand>) {
+    let menu_event_receiver = MenuEvent::receiver();
+    #[cfg(not(target_os = "windows"))]
+    {
+        let quit = false;
+        while !quit {
+            while let Ok(event) = menu_event_receiver.try_recv() {
+                match event.id.0.as_str() {
+                    "quit" => command_tx.send(agent::AgentCommand::Quit).unwrap(),
+                    _ => eprintln!("Unknown menu item"),
+                }
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    unsafe {
+        let mut msg: MSG = std::mem::zeroed();
+        loop {
+            while PeekMessageW(&mut msg as *mut MSG, std::ptr::null_mut(), 0, 0, PM_REMOVE) != 0 {
+                TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+
+            while let Ok(event) = menu_event_receiver.try_recv() {
+                match event.id.0.as_str() {
+                    "quit" => {
+                        let _ = command_tx.send(agent::AgentCommand::Quit);
+                        return;
+                    }
+                    _ => eprintln!("Unknown menu item"),
+                }
+            }
+
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
 }
 
 fn build_tray_menu() -> Menu {

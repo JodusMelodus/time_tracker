@@ -1,8 +1,6 @@
-use std::sync::{
-    Arc,
-    mpsc::{Receiver, Sender},
-};
+use std::sync::{Arc, mpsc::Receiver};
 
+use crossbeam_channel::Sender;
 use rusqlite::Connection;
 
 use crate::{agent, config, storage, ui, utils};
@@ -55,8 +53,9 @@ pub fn start_agent(
     let db_connection = storage::sqlite::init_db().unwrap();
     println!("SQLite databse initialized!");
     let mut agent_state = agent::AgentState::new(db_connection);
+    let mut running = true;
 
-    loop {
+    while running {
         while let Ok(event) = command_rx.try_recv() {
             match event {
                 AgentCommand::StartSession { id } => {
@@ -97,7 +96,10 @@ pub fn start_agent(
                         elapsed: agent_state.stop_watch.elapsed(),
                     })
                     .unwrap(),
-                AgentCommand::Quit => todo!("Do this"),
+                AgentCommand::Quit => {
+                    let _ = event_tx.send(ui::UIEvent::Quit);
+                    running = false;
+                }
             }
         }
     }
