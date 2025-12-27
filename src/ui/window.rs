@@ -180,8 +180,7 @@ impl MyApp {
                         .on_hover_cursor(CursorIcon::PointingHand)
                         .clicked()
                     {
-                        self.agent_tx.send(agent::AgentCommand::Quit).unwrap();
-                        ui.ctx().send_viewport_cmd(ViewportCommand::Close);
+                        ctx.send_viewport_cmd(ViewportCommand::Close);
                     }
                 })
                 .response
@@ -302,13 +301,13 @@ impl MyApp {
         });
     }
 
-fn determine_user_state(&mut self, ctx: &Context) {
+    fn determine_user_state(&mut self, ctx: &Context) {
         let _ = self.agent_tx.send(agent::AgentCommand::ElapsedTime);
-    
+
         let idle_after = self.last_user_activity_time_stamp
             + chrono::Duration::seconds(self.settings.active_timeout_seconds.try_into().unwrap());
         let now = chrono::Utc::now();
-    
+
         if self.user_state == agent::UserState::Active {
             if now >= idle_after {
                 self.user_state = agent::UserState::Idle;
