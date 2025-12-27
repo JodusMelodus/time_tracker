@@ -4,9 +4,13 @@
 
 An activity tracker designed for the workplace, yet flexible enough to use anywhere.
 
-<!-- ## Getting started -->
-<!-- ## Install -->
-<!-- ## Run -->
+## Getting started
+
+1. Download the latest release [here](https://github.com/Jodus-Melodus/time_tracker/releases).
+2. Move the `TimeTracker-{version}.zip` anywhere you please.
+3. Right click on the `TimeTracker-{version}.zip` file and select `Extract`.
+4. Double click the `time_tracker.exe` file to run it.
+5. All done!
 
 ## Features
 - **Start/Stop Tasks** - choose what you work on and when
