@@ -52,7 +52,6 @@ pub fn start_agent(
     _settings: Arc<config::settings::Settings>,
 ) {
     let db_connection = storage::sqlite::init_db().unwrap();
-    println!("SQLite databse initialized!");
     let mut agent_state = agent::AgentState::new(db_connection);
     let mut running = true;
 
