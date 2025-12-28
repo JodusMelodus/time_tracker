@@ -27,3 +27,8 @@
     - Make the interface more user-friendly
     - Improve layout and organization
 - Improve accessibility
+
+## 🐞 Bugs
+
+- Comments are not resetting.
+- UI layering incorrect. 
