@@ -1,6 +1,6 @@
 [package]
 name = "time_tracker"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 edition = "2024"
 authors = ["JodusMelodus"]
 description = "Lightweight background Time Tracker"
