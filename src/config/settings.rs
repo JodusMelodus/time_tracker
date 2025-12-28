@@ -40,7 +40,7 @@ impl Default for Settings {
             active_timeout_seconds: 15,
             icon_path: "assets/icon.ico".into(),
             schema_path: "assets/schema.sql".into(),
-            local_database_path: "assets/sessions.db".into(),
+            local_database_path: local_database_path().to_string_lossy().to_string(),
         }
     }
 }
@@ -51,4 +51,12 @@ fn settings_path() -> PathBuf {
         .join("time-tracker");
     std::fs::create_dir_all(&dir).ok();
     dir.join("settings.json")
+}
+
+fn local_database_path() -> PathBuf {
+    let dir = dirs::config_dir()
+        .unwrap_or(std::env::current_dir().unwrap())
+        .join("time-tracker");
+    std::fs::create_dir_all(&dir).ok();
+    dir.join("sessions.db")
 }
