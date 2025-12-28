@@ -2,6 +2,15 @@
 name = "time_tracker"
 version = "0.1.0-alpha.1"
 edition = "2024"
+authors = ["JodusMelodus"]
+description = "Lightweight background Time Tracker"
+repository = "https://github.com/Jodus-Melodus/time_tracker"
+
+[package.metadata.wix]
+upgrade-guid = "2B9EFA9C-CE83-4181-A564-BA7284B000A4"
+path-guid = "7AA7D695-6673-40A2-8498-45B4C86B9D44"
+license = false
+eula = false
 
 [dependencies]
 chrono = "0.4"
@@ -16,3 +25,11 @@ crossbeam-channel = "0.5"
 winapi = "0.3"
 tray-icon = "0.21"
 image = "0.25"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+[package.metadata.dist]
+include = ["assets/"]
