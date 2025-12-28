@@ -27,7 +27,6 @@
     - Make the interface more user-friendly
     - Improve layout and organization
 - Improve accessibility
-- Embed database schema
 
 ## 🐞 Bugs
 

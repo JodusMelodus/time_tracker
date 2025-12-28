@@ -1,7 +1,7 @@
 use rusqlite::{Connection, Result};
-use std::{fs, sync::Arc};
+use std::sync::Arc;
 
-use crate::config;
+use crate::{DB_SCHEMA, config};
 
 pub fn init_db(settings: Arc<config::settings::Settings>) -> Result<Connection> {
     let conn = Connection::open(&settings.local_database_path)?;
@@ -13,8 +13,7 @@ pub fn init_db(settings: Arc<config::settings::Settings>) -> Result<Connection> 
         ",
     )?;
 
-    let schema = fs::read_to_string(&settings.schema_path).unwrap();
-    conn.execute_batch(&schema)?;
+    conn.execute_batch(DB_SCHEMA)?;
     // Ensure the current user exists so sessions can reference it (foreign key)
     conn.execute(
         "INSERT OR IGNORE INTO users (u_id, u_name) VALUES (?1, ?2)",
