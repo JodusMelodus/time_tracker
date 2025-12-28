@@ -1,8 +1,6 @@
-use std::fs;
+use std::{fs, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
-
-const SETTINGS_PATH: &str = "assets/settings.json";
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Settings {
@@ -15,7 +13,7 @@ pub struct Settings {
 
 impl Settings {
     pub fn load() -> Self {
-        let settings = if let Ok(data) = fs::read_to_string(SETTINGS_PATH) {
+        let settings = if let Ok(data) = fs::read_to_string(settings_path()) {
             if let Ok(settings) = serde_json::from_str::<Self>(&data) {
                 settings
             } else {
@@ -31,7 +29,7 @@ impl Settings {
 
     pub fn save(&self) -> std::io::Result<()> {
         let json = serde_json::to_string_pretty(self).unwrap();
-        std::fs::write(SETTINGS_PATH, json)
+        std::fs::write(settings_path(), json)
     }
 }
 
@@ -45,4 +43,12 @@ impl Default for Settings {
             local_database_path: "assets/sessions.db".into(),
         }
     }
+}
+
+fn settings_path() -> PathBuf {
+    let dir = dirs::config_dir()
+        .unwrap_or(std::env::current_dir().unwrap())
+        .join("time-tracker");
+    std::fs::create_dir_all(&dir).ok();
+    dir.join("settings.json")
 }

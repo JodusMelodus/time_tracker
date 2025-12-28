@@ -1,7 +1,0 @@
-{
-  "auto_sync_interval_seconds": 30,
-  "active_timeout_seconds": 15,
-  "icon_path": "assets/icon.ico",
-  "schema_path": "assets/schema.sql",
-  "local_database_path": "assets/sessions.db"
-}
