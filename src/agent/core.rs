@@ -2,33 +2,23 @@ use std::sync::Arc;
 
 use rusqlite::Connection;
 
-use crate::{agent, config, storage, ui, utils};
+use crate::{agent, config, storage, ui};
 
-pub mod input;
-pub mod sessions;
-pub mod tasks;
+struct AgentState {
+    db_connection: Connection,
 
-#[derive(PartialEq)]
-pub enum UserState {
-    Idle,
-    Active,
-}
-
-pub struct AgentState {
-    pub db_connection: Connection,
-
-    pub session: agent::sessions::Session,
-    pub stop_watch: utils::time::StopWatch,
-    pub task_in_progress: bool,
+    session: agent::sessions::Session,
+    stop_watch: agent::time::StopWatch,
+    task_in_progress: bool,
 }
 
 impl AgentState {
-    pub fn new(db_connection: Connection) -> Self {
+    fn new(db_connection: Connection) -> Self {
         AgentState {
             db_connection,
 
             session: agent::sessions::Session::default(),
-            stop_watch: utils::time::StopWatch::new(),
+            stop_watch: agent::time::StopWatch::new(),
             task_in_progress: false,
         }
     }
@@ -47,12 +37,12 @@ pub enum AgentCommand {
 
 pub fn start_agent(
     command_rx: std::sync::mpsc::Receiver<AgentCommand>,
-    event_tx: crossbeam_channel::Sender<ui::UIEvent>,
-    ui_control_tx: std::sync::mpsc::Sender<ui::UIControl>,
+    event_tx: crossbeam_channel::Sender<ui::viewmodels::UIEvent>,
+    ui_control_tx: std::sync::mpsc::Sender<ui::viewmodels::UIControl>,
     settings: Arc<config::settings::Settings>,
 ) {
-    let db_connection = storage::sqlite::init_db(settings.clone()).unwrap();
-    let mut agent_state = agent::AgentState::new(db_connection);
+    let db_connection = storage::init_db(settings.clone()).unwrap();
+    let mut agent_state = AgentState::new(db_connection);
     let mut running = true;
 
     while running {
@@ -82,7 +72,9 @@ pub fn start_agent(
                 AgentCommand::RequestTaskList => {
                     let task_list =
                         agent::tasks::get_all_tasks(&agent_state.db_connection).unwrap();
-                    event_tx.send(ui::UIEvent::TaskList { task_list }).unwrap();
+                    event_tx
+                        .send(ui::viewmodels::UIEvent::TaskList { task_list })
+                        .unwrap();
                 }
                 AgentCommand::UpdateStopWatch { running } => {
                     if agent_state.task_in_progress {
@@ -93,17 +85,17 @@ pub fn start_agent(
                     }
                 }
                 AgentCommand::ElapsedTime => event_tx
-                    .send(ui::UIEvent::ElapsedTime {
+                    .send(ui::viewmodels::UIEvent::ElapsedTime {
                         elapsed: agent_state.stop_watch.elapsed(),
                     })
                     .unwrap(),
                 AgentCommand::Quit => {
-                    let _ = event_tx.send(ui::UIEvent::Quit);
-                    let _ = ui_control_tx.send(ui::UIControl::Quit);
+                    let _ = event_tx.send(ui::viewmodels::UIEvent::Quit);
+                    let _ = ui_control_tx.send(ui::viewmodels::UIControl::Quit);
                     running = false;
                 }
                 AgentCommand::ShowUI => {
-                    let _ = ui_control_tx.send(ui::UIControl::Show);
+                    let _ = ui_control_tx.send(ui::viewmodels::UIControl::Show);
                 }
             }
         }

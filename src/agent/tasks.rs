@@ -1,5 +1,7 @@
 use rusqlite::{Connection, Result};
 
+pub const PRIORITY_LEVELS: &[&str] = &["Low", "Medium", "High"];
+
 #[derive(Clone)]
 pub struct Task {
     pub t_id: i64,
@@ -7,7 +9,15 @@ pub struct Task {
     pub t_priority: usize,
 }
 
-pub const PRIORITY_LEVELS: &[&str] = &["Low", "Medium", "High"];
+impl Default for Task {
+    fn default() -> Self {
+        Task {
+            t_id: 1,
+            t_name: "".to_string(),
+            t_priority: 0,
+        }
+    }
+}
 
 pub fn get_all_tasks(conn: &Connection) -> Result<Vec<Task>> {
     let mut statement = conn.prepare("SELECT * FROM tasks")?;
@@ -34,14 +44,4 @@ pub fn add_new_task(conn: &Connection, task: &Task) -> Result<usize> {
             (?1, ?2)",
         (&task.t_name, &task.t_priority),
     )
-}
-
-impl Default for Task {
-    fn default() -> Self {
-        Task {
-            t_id: 1,
-            t_name: "".to_string(),
-            t_priority: 0,
-        }
-    }
 }

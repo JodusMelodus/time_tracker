@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::{DB_SCHEMA, config};
 
-pub fn init_db(settings: Arc<config::settings::Settings>) -> Result<Connection> {
+pub fn init_db(settings: Arc<config::Settings>) -> Result<Connection> {
     let conn = Connection::open(&settings.local_database_path)?;
 
     conn.execute_batch(

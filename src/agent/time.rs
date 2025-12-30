@@ -38,12 +38,3 @@ impl StopWatch {
     }
 }
 
-pub fn format_duration(d: Duration) -> String {
-    let secs = d.as_secs();
-
-    let hours = secs / 3600;
-    let minutes = (secs % 3600) / 60;
-    let seconds = secs % 60;
-
-    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
-}

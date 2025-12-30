@@ -10,14 +10,14 @@ use egui::{
     Slider, TopBottomPanel, ViewportBuilder, ViewportCommand, Window, panel::TopBottomSide,
 };
 
-use crate::{APP_ICON_BYTES, agent, config, ui, utils};
+use crate::{APP_ICON_BYTES, agent, config, ui};
 
 pub fn run_ui(
     command_tx: Sender<agent::AgentCommand>,
-    event_rx: Receiver<ui::UIEvent>,
-    settings: Arc<config::settings::Settings>,
+    event_rx: Receiver<ui::viewmodels::UIEvent>,
+    settings: Arc<config::Settings>,
 ) {
-    let icon = ui::load_icon_from_bytes(APP_ICON_BYTES);
+    let icon = ui::utils::load_icon_from_bytes(APP_ICON_BYTES);
     let mut options = NativeOptions {
         viewport: ViewportBuilder::default()
             .with_min_inner_size([250.0, 500.0])
@@ -38,11 +38,11 @@ pub fn run_ui(
                 elapsed_time: Duration::ZERO,
                 settings,
                 active_task_id: -1,
-                dialog_info: ui::dialog::DialogInfo::default(),
+                dialog_info: ui::DialogInfo::default(),
                 tasks: Vec::new(),
                 show_new_task_dialog: false,
                 last_user_activity_time_stamp: chrono::Utc::now(),
-                user_state: agent::UserState::Active,
+                user_state: ui::viewmodels::UserState::Active,
             }))
         }),
     )
@@ -51,17 +51,17 @@ pub fn run_ui(
 
 struct MyApp {
     agent_tx: Sender<agent::AgentCommand>,
-    ui_rx: Receiver<ui::UIEvent>,
+    ui_rx: Receiver<ui::viewmodels::UIEvent>,
     new_task: agent::tasks::Task,
     session_comment: String,
     elapsed_time: Duration,
-    settings: Arc<config::settings::Settings>,
+    settings: Arc<config::Settings>,
     active_task_id: i64,
-    dialog_info: ui::dialog::DialogInfo,
+    dialog_info: ui::DialogInfo,
 
     tasks: Vec<agent::tasks::Task>,
     show_new_task_dialog: bool,
-    user_state: agent::UserState,
+    user_state: ui::viewmodels::UserState,
     last_user_activity_time_stamp: chrono::DateTime<chrono::Utc>,
 }
 
@@ -69,30 +69,30 @@ impl eframe::App for MyApp {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         while let Ok(event) = self.ui_rx.try_recv() {
             match event {
-                ui::UIEvent::TaskList { task_list } => self.tasks = task_list,
-                ui::UIEvent::UserActivity { time_stamp } => {
-                    self.user_state = agent::UserState::Active;
+                ui::viewmodels::UIEvent::TaskList { task_list } => self.tasks = task_list,
+                ui::viewmodels::UIEvent::UserActivity { time_stamp } => {
+                    self.user_state = ui::viewmodels::UserState::Active;
                     self.last_user_activity_time_stamp = time_stamp;
                     if let Err(e) = self
                         .agent_tx
                         .send(agent::AgentCommand::UpdateStopWatch { running: true })
                     {
-                        self.dialog_info = ui::dialog::DialogInfo {
+                        self.dialog_info = ui::DialogInfo {
                             title: "Error",
                             message: format!("{}", e),
                             shown: false,
                         }
                     }
                 }
-                ui::UIEvent::ElapsedTime { elapsed } => self.elapsed_time = elapsed,
-                ui::UIEvent::Quit => ctx.send_viewport_cmd(ViewportCommand::Close),
+                ui::viewmodels::UIEvent::ElapsedTime { elapsed } => self.elapsed_time = elapsed,
+                ui::viewmodels::UIEvent::Quit => ctx.send_viewport_cmd(ViewportCommand::Close),
             }
 
             ctx.request_repaint();
         }
 
         if let Err(e) = self.agent_tx.send(agent::AgentCommand::RequestTaskList) {
-            self.dialog_info = ui::dialog::DialogInfo {
+            self.dialog_info = ui::DialogInfo {
                 title: "Error",
                 message: format!("{}", e),
                 shown: false,
@@ -186,14 +186,14 @@ impl MyApp {
                             if let Err(e) = self.agent_tx.send(agent::AgentCommand::AddTask {
                                 task: self.new_task.clone(),
                             }) {
-                                self.dialog_info = ui::dialog::DialogInfo {
+                                self.dialog_info = ui::DialogInfo {
                                     title: "Error",
                                     message: format!("{}", e),
                                     shown: false,
                                 }
                             }
                             self.show_new_task_dialog = false;
-                            self.dialog_info = ui::dialog::DialogInfo {
+                            self.dialog_info = ui::DialogInfo {
                                 title: "Information",
                                 message: format!("{}", "Added new task successfully!"),
                                 shown: false,
@@ -282,7 +282,7 @@ impl MyApp {
                                                         comment: self.session_comment.clone(),
                                                     },
                                                 ) {
-                                                    self.dialog_info = ui::dialog::DialogInfo {
+                                                    self.dialog_info = ui::DialogInfo {
                                                         title: "Error",
                                                         message: format!("{}", e),
                                                         shown: false,
@@ -302,7 +302,7 @@ impl MyApp {
                                                         id: task.t_id,
                                                     },
                                                 ) {
-                                                    self.dialog_info = ui::dialog::DialogInfo {
+                                                    self.dialog_info = ui::DialogInfo {
                                                         title: "Error",
                                                         message: format!("{}", e),
                                                         shown: false,
@@ -326,8 +326,12 @@ impl MyApp {
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
                     match self.user_state {
-                        agent::UserState::Active => ui.colored_label(Color32::DARK_GREEN, "Active"),
-                        agent::UserState::Idle => ui.colored_label(Color32::DARK_GRAY, "Idle"),
+                        ui::viewmodels::UserState::Active => {
+                            ui.colored_label(Color32::DARK_GREEN, "Active")
+                        }
+                        ui::viewmodels::UserState::Idle => {
+                            ui.colored_label(Color32::DARK_GRAY, "Idle")
+                        }
                     };
                 });
                 ui.with_layout(Layout::right_to_left(egui::Align::Max), |ui| {
@@ -338,7 +342,7 @@ impl MyApp {
                         .clicked()
                     {}
 
-                    ui.label(utils::time::format_duration(self.elapsed_time));
+                    ui.label(ui::utils::format_duration(self.elapsed_time));
                 });
             });
         });
@@ -346,7 +350,7 @@ impl MyApp {
 
     fn determine_user_state(&mut self, ctx: &Context) {
         if let Err(e) = self.agent_tx.send(agent::AgentCommand::ElapsedTime) {
-            self.dialog_info = ui::dialog::DialogInfo {
+            self.dialog_info = ui::DialogInfo {
                 title: "Error",
                 message: format!("{}", e),
                 shown: false,
@@ -357,14 +361,14 @@ impl MyApp {
             + chrono::Duration::seconds(self.settings.active_timeout_seconds.try_into().unwrap());
         let now = chrono::Utc::now();
 
-        if self.user_state == agent::UserState::Active {
+        if self.user_state == ui::viewmodels::UserState::Active {
             if now >= idle_after {
-                self.user_state = agent::UserState::Idle;
+                self.user_state = ui::viewmodels::UserState::Idle;
                 if let Err(e) = self
                     .agent_tx
                     .send(agent::AgentCommand::UpdateStopWatch { running: false })
                 {
-                    self.dialog_info = ui::dialog::DialogInfo {
+                    self.dialog_info = ui::DialogInfo {
                         title: "Error",
                         message: format!("{}", e),
                         shown: false,

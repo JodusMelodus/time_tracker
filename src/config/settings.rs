@@ -28,7 +28,7 @@ impl Settings {
         settings
     }
 
-    pub fn save(&self) -> std::io::Result<()> {
+    fn save(&self) -> std::io::Result<()> {
         let json = serde_json::to_string_pretty(self).unwrap();
         std::fs::write(settings_path(), json)
     }

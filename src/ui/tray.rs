@@ -10,7 +10,7 @@ use winapi::um::winuser::{DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, Transl
 use crate::{APP_ICON_BYTES, agent, ui};
 
 pub fn init_tray_icon() -> TrayIcon {
-    let icon_data = ui::load_icon_from_bytes(APP_ICON_BYTES);
+    let icon_data = ui::utils::load_icon_from_bytes(APP_ICON_BYTES);
 
     let icon = Icon::from_rgba(icon_data.rgba, icon_data.width, icon_data.height)
         .expect("Invalid icon data");
