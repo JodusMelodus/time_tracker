@@ -31,6 +31,10 @@ pub fn start() {
         })
         .unwrap();
 
+    if settings.open_ui_at_start_up {
+        ui::window::run_ui(command_tx.clone(), event_rx.clone(), settings.clone());
+    }
+
     loop {
         if let Ok(event) = ui_control_rx.try_recv() {
             match event {

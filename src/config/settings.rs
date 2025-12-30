@@ -9,6 +9,7 @@ pub struct Settings {
     pub active_timeout_seconds: u64,
     pub local_database_path: String,
     pub uid: String,
+    pub open_ui_at_start_up: bool,
 }
 
 impl Settings {
@@ -40,6 +41,7 @@ impl Default for Settings {
             active_timeout_seconds: 15,
             local_database_path: local_database_path().to_string_lossy().to_string(),
             uid: Uuid::new_v4().to_string(),
+            open_ui_at_start_up: true,
         }
     }
 }
