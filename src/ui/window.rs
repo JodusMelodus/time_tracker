@@ -82,6 +82,8 @@ impl eframe::App for MyApp {
             ctx.request_repaint();
         }
 
+        let _ = self.agent_tx.send(agent::AgentCommand::RequestTaskList);
+
         self.determine_user_state(ctx);
 
         // Menu bar
@@ -140,15 +142,11 @@ impl MyApp {
                             .on_hover_cursor(CursorIcon::PointingHand)
                             .clicked()
                         {
-                            self.agent_tx
-                                .send(agent::AgentCommand::AddTask {
-                                    task: self.new_task.clone(),
-                                })
-                                .unwrap();
+                            let _ = self.agent_tx.send(agent::AgentCommand::AddTask {
+                                task: self.new_task.clone(),
+                            });
                             self.show_new_task_dialog = false;
-                            self.agent_tx
-                                .send(agent::AgentCommand::RequestTaskList)
-                                .unwrap();
+                            let _ = self.agent_tx.send(agent::AgentCommand::RequestTaskList);
                         }
                     });
                 });
@@ -160,7 +158,7 @@ impl MyApp {
             MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui
-                        .button("Quit")
+                        .button("Exit")
                         .on_hover_cursor(CursorIcon::PointingHand)
                         .clicked()
                     {
@@ -170,13 +168,13 @@ impl MyApp {
                 .response
                 .on_hover_cursor(CursorIcon::PointingHand);
 
-                ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                ui.menu_button("Task", |ui| {
                     if ui
-                        .button("Add Task")
+                        .button("New Task...")
                         .on_hover_cursor(CursorIcon::PointingHand)
                         .clicked()
                     {
-                        self.show_new_task_dialog = true;
+                        self.show_new_task_dialog = !self.show_new_task_dialog;
                     }
                 });
             });
@@ -228,11 +226,11 @@ impl MyApp {
                                                 .on_hover_cursor(CursorIcon::PointingHand)
                                                 .clicked()
                                             {
-                                                self.agent_tx
-                                                    .send(agent::AgentCommand::EndSession {
+                                                let _ = self.agent_tx.send(
+                                                    agent::AgentCommand::EndSession {
                                                         comment: self.session_comment.clone(),
-                                                    })
-                                                    .unwrap();
+                                                    },
+                                                );
                                                 self.active_task_id = -1;
                                                 self.session_comment = "".into();
                                             }
@@ -242,11 +240,11 @@ impl MyApp {
                                                 .on_hover_cursor(CursorIcon::PointingHand)
                                                 .clicked()
                                             {
-                                                self.agent_tx
-                                                    .send(agent::AgentCommand::StartSession {
+                                                let _ = self.agent_tx.send(
+                                                    agent::AgentCommand::StartSession {
                                                         id: task.t_id,
-                                                    })
-                                                    .unwrap();
+                                                    },
+                                                );
                                                 self.active_task_id = task.t_id;
                                             }
                                         }
@@ -273,12 +271,9 @@ impl MyApp {
                     if ui
                         .button("↻")
                         .on_hover_cursor(CursorIcon::PointingHand)
+                        .on_hover_text("Sync")
                         .clicked()
-                    {
-                        self.agent_tx
-                            .send(agent::AgentCommand::RequestTaskList)
-                            .unwrap();
-                    }
+                    {}
 
                     ui.label(utils::time::format_duration(self.elapsed_time));
                 });
@@ -296,9 +291,9 @@ impl MyApp {
         if self.user_state == agent::UserState::Active {
             if now >= idle_after {
                 self.user_state = agent::UserState::Idle;
-                self.agent_tx
-                    .send(agent::AgentCommand::UpdateStopWatch { running: false })
-                    .unwrap();
+                let _ = self
+                    .agent_tx
+                    .send(agent::AgentCommand::UpdateStopWatch { running: false });
                 ctx.request_repaint();
             } else {
                 let remaining = idle_after - now;
