@@ -227,7 +227,9 @@ impl MyApp {
                     {
                         self.show_new_task_dialog = !self.show_new_task_dialog;
                     }
-                });
+                })
+                .response
+                .on_hover_cursor(CursorIcon::PointingHand)
             });
         });
     }
@@ -243,10 +245,8 @@ impl MyApp {
                             ui.horizontal(|ui| {
                                 ui.vertical(|ui| {
                                     ui.label(&task.t_name).on_hover_text("Name");
-                                    if task.t_id == self.active_task_id {
-                                        ui.text_edit_multiline(&mut self.session_comment)
-                                            .on_hover_text("Comment");
-                                    }
+                                    ui.text_edit_multiline(&mut self.session_comment)
+                                        .on_hover_text("Comment");
                                 });
 
                                 ui.vertical(|ui| {
@@ -326,17 +326,17 @@ impl MyApp {
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::left_to_right(egui::Align::Min), |ui| {
                     match self.user_state {
-                        ui::viewmodels::UserState::Active => {
-                            ui.colored_label(Color32::DARK_GREEN, "Active")
-                        }
-                        ui::viewmodels::UserState::Idle => {
-                            ui.colored_label(Color32::DARK_GRAY, "Idle")
-                        }
+                        ui::viewmodels::UserState::Active => ui
+                            .colored_label(Color32::DARK_GREEN, "⏺")
+                            .on_hover_cursor(CursorIcon::Default),
+                        ui::viewmodels::UserState::Idle => ui
+                            .colored_label(Color32::DARK_GRAY, "⏺")
+                            .on_hover_cursor(CursorIcon::Default),
                     };
                 });
                 ui.with_layout(Layout::right_to_left(egui::Align::Max), |ui| {
                     if ui
-                        .button("↻")
+                        .button("🔃")
                         .on_hover_cursor(CursorIcon::PointingHand)
                         .on_hover_text("Sync")
                         .clicked()
