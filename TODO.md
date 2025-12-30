@@ -1,6 +1,6 @@
 # TODO
 
-> Project TODO list - work in progress. Taks are categorized and tracked here.
+> Project TODO list - work in progress. Tasks are categorized and tracked here.
 
 ## Table of Contents
 
@@ -27,7 +27,9 @@
     - Make the interface more user-friendly
     - Improve layout and organization
 - Improve accessibility
+- Check other cargo-dist properties
+- Set App icon
 
 ## 🐞 Bugs
 
-- UI layering incorrect.
+- UI layering is incorrect.
