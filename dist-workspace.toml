@@ -13,5 +13,4 @@ installers = ["msi"]
 targets = ["x86_64-pc-windows-msvc"]
 
 [dist.windows]
-installer = "wix"
 icon = "assets/icon.ico"
