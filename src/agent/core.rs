@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, mpsc};
 
 use rusqlite::Connection;
 
@@ -10,6 +10,9 @@ struct AgentState {
     session: agent::sessions::Session,
     stop_watch: agent::time::StopWatch,
     task_in_progress: bool,
+
+    last_user_activity_time_stamp: chrono::DateTime<chrono::Utc>,
+    user_state: ui::UserState,
 }
 
 impl AgentState {
@@ -20,25 +23,36 @@ impl AgentState {
             session: agent::sessions::Session::default(),
             stop_watch: agent::time::StopWatch::new(),
             task_in_progress: false,
+
+            last_user_activity_time_stamp: chrono::Utc::now(),
+            user_state: ui::UserState::Active,
         }
     }
 }
 
 pub enum AgentCommand {
-    StartSession { id: i64 },
-    EndSession { comment: String },
-    AddTask { task: agent::tasks::Task },
-    UpdateStopWatch { running: bool },
+    StartSession {
+        id: i64,
+    },
+    EndSession {
+        comment: String,
+    },
+    AddTask {
+        task: agent::tasks::Task,
+    },
+    UserActivity {
+        time_stamp: chrono::DateTime<chrono::Utc>,
+    },
     RequestTaskList,
     Quit,
-    ElapsedTime,
+    RequestElapsedTime,
     ShowUI,
 }
 
 pub fn start_agent(
-    command_rx: std::sync::mpsc::Receiver<AgentCommand>,
+    command_rx: mpsc::Receiver<AgentCommand>,
     event_tx: crossbeam_channel::Sender<ui::viewmodels::UIEvent>,
-    ui_control_tx: std::sync::mpsc::Sender<ui::viewmodels::UIControl>,
+    ui_control_tx: mpsc::Sender<ui::viewmodels::UIControl>,
     settings: Arc<config::settings::Settings>,
 ) {
     let db_connection = storage::init_db(settings.clone()).unwrap();
@@ -76,15 +90,7 @@ pub fn start_agent(
                         .send(ui::viewmodels::UIEvent::TaskList { task_list })
                         .unwrap();
                 }
-                AgentCommand::UpdateStopWatch { running } => {
-                    if agent_state.task_in_progress {
-                        match running {
-                            true => agent_state.stop_watch.start(),
-                            false => agent_state.stop_watch.stop(),
-                        }
-                    }
-                }
-                AgentCommand::ElapsedTime => event_tx
+                AgentCommand::RequestElapsedTime => event_tx
                     .send(ui::viewmodels::UIEvent::ElapsedTime {
                         elapsed: agent_state.stop_watch.elapsed(),
                     })
@@ -97,7 +103,39 @@ pub fn start_agent(
                 AgentCommand::ShowUI => {
                     let _ = ui_control_tx.send(ui::viewmodels::UIControl::Show);
                 }
+                AgentCommand::UserActivity { time_stamp } => {
+                    agent_state.user_state = ui::UserState::Active;
+                    agent_state.last_user_activity_time_stamp = time_stamp;
+                    let _ = event_tx.send(ui::UIEvent::UserState {
+                        state: agent_state.user_state,
+                    });
+
+                    if agent_state.task_in_progress {
+                        agent_state.stop_watch.start();
+                    }
+                }
             }
+        }
+
+        let idle_after = agent_state.last_user_activity_time_stamp
+            + chrono::Duration::seconds(settings.active_timeout_seconds.try_into().unwrap());
+        let now = chrono::Utc::now();
+
+        if agent_state.user_state == ui::UserState::Active {
+            let time_out = if now >= idle_after {
+                agent_state.user_state = ui::UserState::Idle;
+                let _ = event_tx.send(ui::UIEvent::UserState {
+                    state: agent_state.user_state,
+                });
+                agent_state.stop_watch.stop();
+                chrono::TimeDelta::zero()
+            } else {
+                idle_after - now
+            };
+
+            let _ = event_tx.send(ui::UIEvent::Repaint {
+                time_out: time_out.num_seconds() as u64,
+            });
         }
     }
 }

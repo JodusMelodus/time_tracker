@@ -1,18 +1,16 @@
-use std::thread;
+use std::{sync::mpsc::Sender, thread};
 
-use chrono::Utc;
-use crossbeam_channel::Sender;
 use rdev::{Event, listen};
 
-use crate::ui;
+use crate::agent;
 
-pub fn start_input_listener(event_tx: Sender<ui::viewmodels::UIEvent>) {
+pub fn start_input_listener(command_tx: Sender<agent::AgentCommand>) {
     thread::Builder::new()
         .name("agent-listener".to_string())
         .spawn(move || {
             let _ = listen(move |_event: Event| {
-                let _ = event_tx.send(ui::viewmodels::UIEvent::UserActivity {
-                    time_stamp: Utc::now(),
+                let _ = command_tx.send(agent::AgentCommand::UserActivity {
+                    time_stamp: chrono::Utc::now(),
                 });
             });
         })

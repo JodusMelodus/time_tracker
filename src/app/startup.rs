@@ -11,19 +11,20 @@ pub fn start() {
     let (ui_control_tx, ui_control_rx) = mpsc::channel();
 
     let settings = Arc::new(config::Settings::load());
-    let agent_settings = settings.clone();
-    let agent_event_tx = event_tx.clone();
-    let tray_command = command_tx.clone();
-    let tray_event = event_rx.clone();
 
+    let agent_settings = settings.clone();
+    let agent_command_tx = command_tx.clone();
+    let agent_event_tx = event_tx.clone();
     let agent_thread = thread::Builder::new()
         .name("agent-worker".into())
         .spawn(move || {
-            agent::start_input_listener(agent_event_tx.clone());
+            agent::start_input_listener(agent_command_tx);
             agent::start_agent(command_rx, agent_event_tx, ui_control_tx, agent_settings);
         })
         .expect("Failed to spawn agent-worker thread");
 
+    let tray_command = command_tx.clone();
+    let tray_event = event_rx.clone();
     let tray_thread = thread::Builder::new()
         .name("tray-menu".to_string())
         .spawn(move || {
