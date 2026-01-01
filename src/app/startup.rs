@@ -14,6 +14,7 @@ pub fn start() {
     let agent_settings = settings.clone();
     let agent_event_tx = event_tx.clone();
     let tray_command = command_tx.clone();
+    let tray_event = event_rx.clone();
 
     let agent_thread = thread::Builder::new()
         .name("agent-worker".into())
@@ -26,8 +27,8 @@ pub fn start() {
     let tray_thread = thread::Builder::new()
         .name("tray-menu".to_string())
         .spawn(move || {
-            let _tray = ui::init_tray_icon();
-            ui::start_tray_listener(tray_command)
+            let mut tray = ui::Tray::new(tray_command, tray_event);
+            tray.start_tray_listener();
         })
         .unwrap();
 

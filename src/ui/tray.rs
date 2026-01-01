@@ -1,5 +1,6 @@
 use std::{sync::mpsc::Sender, time::Duration};
 
+use crossbeam_channel::Receiver;
 use tray_icon::{
     Icon, TrayIcon, TrayIconBuilder,
     menu::{Menu, MenuEvent, MenuId, MenuItemBuilder},
@@ -7,66 +8,114 @@ use tray_icon::{
 #[cfg(target_os = "windows")]
 use winapi::um::winuser::{DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage};
 
-use crate::{APP_ICON_BYTES, agent, ui};
+use crate::{ACTIVE_ICON_BYTES, IDLE_ICON_BYTES, agent, ui};
 
-pub fn init_tray_icon() -> TrayIcon {
-    let icon_data = ui::utils::load_icon_from_bytes(APP_ICON_BYTES);
-
-    let icon = Icon::from_rgba(icon_data.rgba, icon_data.width, icon_data.height)
-        .expect("Invalid icon data");
-    let tray_menu = build_tray_menu();
-
-    let tray = TrayIconBuilder::new()
-        .with_tooltip("Time Tracker")
-        .with_icon(icon)
-        .with_menu(Box::new(tray_menu))
-        .build()
-        .unwrap();
-    tray
+pub struct Tray {
+    tray: TrayIcon,
+    active_icon: Icon,
+    idle_icon: Icon,
+    command_tx: Sender<agent::AgentCommand>,
+    event_rx: Receiver<ui::UIEvent>,
+    quit: bool,
+    user_state: ui::UserState,
 }
 
-pub fn start_tray_listener(command_tx: Sender<agent::AgentCommand>) {
-    let menu_event_receiver = MenuEvent::receiver();
-    let mut quit: bool = false;
+impl Tray {
+    pub fn new(command_tx: Sender<agent::AgentCommand>, event_rx: Receiver<ui::UIEvent>) -> Self {
+        let active_icon_data = ui::utils::load_icon_from_bytes(ACTIVE_ICON_BYTES);
+        let idle_icon_data = ui::utils::load_icon_from_bytes(IDLE_ICON_BYTES);
 
-    #[cfg(not(target_os = "windows"))]
-    {
-        while !quit {
-            handle_events(&command_tx, menu_event_receiver, &mut quit);
-            std::thread::sleep(Duration::from_millis(100));
+        let active_icon = Icon::from_rgba(
+            active_icon_data.rgba,
+            active_icon_data.width,
+            active_icon_data.height,
+        )
+        .expect("Invalid active icon data");
+
+        let idle_icon = Icon::from_rgba(
+            idle_icon_data.rgba,
+            idle_icon_data.width,
+            idle_icon_data.height,
+        )
+        .expect("Invalid idle icon data");
+
+        let tray_menu = build_tray_menu();
+
+        let tray = TrayIconBuilder::new()
+            .with_tooltip("Time Tracker")
+            .with_icon(active_icon.clone())
+            .with_menu(Box::new(tray_menu))
+            .build()
+            .unwrap();
+
+        let quit = false;
+        let user_state = ui::UserState::Active;
+
+        Self {
+            tray,
+            active_icon,
+            idle_icon,
+            command_tx,
+            event_rx,
+            quit,
+            user_state,
         }
     }
 
-    #[cfg(target_os = "windows")]
-    unsafe {
-        let mut msg: MSG = std::mem::zeroed();
-        while !quit {
-            while PeekMessageW(&mut msg as *mut MSG, std::ptr::null_mut(), 0, 0, PM_REMOVE) != 0 {
-                TranslateMessage(&msg);
-                DispatchMessageW(&msg);
-            }
+    pub fn start_tray_listener(&mut self) {
+        let menu_event_receiver = MenuEvent::receiver();
 
-            handle_events(&command_tx, menu_event_receiver, &mut quit);
-            std::thread::sleep(Duration::from_millis(50));
+        #[cfg(not(target_os = "windows"))]
+        {
+            while !quit {
+                handle_events(&command_tx, menu_event_receiver, &mut quit);
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        }
+
+        #[cfg(target_os = "windows")]
+        unsafe {
+            let mut msg: MSG = std::mem::zeroed();
+            while !self.quit {
+                while PeekMessageW(&mut msg as *mut MSG, std::ptr::null_mut(), 0, 0, PM_REMOVE) != 0
+                {
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+
+                self.handle_events(menu_event_receiver);
+
+                let _ = match self.user_state {
+                    ui::UserState::Active => self.tray.set_icon(Some(self.active_icon.clone())),
+                    ui::UserState::Idle => self.tray.set_icon(Some(self.idle_icon.clone())),
+                };
+
+                std::thread::sleep(Duration::from_millis(50));
+            }
         }
     }
-}
 
-fn handle_events(
-    command_tx: &Sender<agent::AgentCommand>,
-    menu_event_receiver: &crossbeam_channel::Receiver<MenuEvent>,
-    quit: &mut bool,
-) {
-    while let Ok(event) = menu_event_receiver.try_recv() {
-        match event.id.0.as_str() {
-            "quit" => {
-                let _ = command_tx.send(agent::AgentCommand::Quit);
-                *quit = true;
+    fn handle_events(&mut self, menu_event_receiver: &crossbeam_channel::Receiver<MenuEvent>) {
+        while let Ok(event) = menu_event_receiver.try_recv() {
+            match event.id.0.as_str() {
+                "quit" => {
+                    let _ = self.command_tx.send(agent::AgentCommand::Quit);
+                    self.quit = true;
+                }
+                "ui" => {
+                    let _ = self.command_tx.send(agent::AgentCommand::ShowUI);
+                }
+                _ => eprintln!("Invalid menu item"),
             }
-            "ui" => {
-                let _ = command_tx.send(agent::AgentCommand::ShowUI);
+        }
+
+        while let Ok(event) = self.event_rx.try_recv() {
+            match event {
+                ui::UIEvent::UserState { state } => {
+                    self.user_state = state;
+                }
+                _ => (),
             }
-            _ => eprintln!("Invalid menu item"),
         }
     }
 }

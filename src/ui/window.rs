@@ -86,6 +86,7 @@ impl eframe::App for MyApp {
                 }
                 ui::viewmodels::UIEvent::ElapsedTime { elapsed } => self.elapsed_time = elapsed,
                 ui::viewmodels::UIEvent::Quit => ctx.send_viewport_cmd(ViewportCommand::Close),
+                _ => (),
             }
 
             ctx.request_repaint();
