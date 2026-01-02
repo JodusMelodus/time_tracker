@@ -1,9 +1,8 @@
 use std::{
-    sync::{Arc, mpsc::Sender},
+    sync::{Arc, mpsc},
     time::Duration,
 };
 
-use crossbeam_channel::Receiver;
 use eframe::{NativeOptions, egui};
 use egui::{
     Align, Align2, CentralPanel, Color32, Context, CursorIcon, Layout, MenuBar, Order, ScrollArea,
@@ -13,8 +12,8 @@ use egui::{
 use crate::{APP_ICON_BYTES, agent, config, ui};
 
 pub fn run_ui(
-    command_tx: Sender<agent::AgentCommand>,
-    event_rx: Receiver<ui::viewmodels::UIEvent>,
+    command_tx: mpsc::Sender<agent::AgentCommand>,
+    window_rx: crossbeam_channel::Receiver<ui::viewmodels::UIEvent>,
     settings: Arc<config::Settings>,
 ) {
     let icon = ui::utils::load_icon_from_bytes(APP_ICON_BYTES);
@@ -31,9 +30,9 @@ pub fn run_ui(
         options,
         Box::new(|_cc| {
             Ok(Box::new(MyApp {
-                agent_tx: command_tx,
-                ui_rx: event_rx,
-                new_task: agent::tasks::Task::default(),
+                command_tx,
+                window_rx,
+                new_task: agent::Task::default(),
                 session_comment: "".to_string(),
                 elapsed_time: Duration::ZERO,
                 _settings: settings,
@@ -49,8 +48,8 @@ pub fn run_ui(
 }
 
 struct MyApp {
-    agent_tx: Sender<agent::AgentCommand>,
-    ui_rx: Receiver<ui::viewmodels::UIEvent>,
+    command_tx: mpsc::Sender<agent::AgentCommand>,
+    window_rx: crossbeam_channel::Receiver<ui::viewmodels::UIEvent>,
     new_task: agent::tasks::Task,
     session_comment: String,
     elapsed_time: Duration,
@@ -65,7 +64,7 @@ struct MyApp {
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
-        while let Ok(event) = self.ui_rx.try_recv() {
+        while let Ok(event) = self.window_rx.try_recv() {
             match event {
                 ui::viewmodels::UIEvent::TaskList { task_list } => self.tasks = task_list,
                 ui::viewmodels::UIEvent::ElapsedTime { elapsed } => self.elapsed_time = elapsed,
@@ -80,7 +79,7 @@ impl eframe::App for MyApp {
         }
 
         if self.tasks.is_empty() {
-            if let Err(e) = self.agent_tx.send(agent::AgentCommand::RequestTaskList) {
+            if let Err(e) = self.command_tx.send(agent::AgentCommand::RequestTaskList) {
                 self.dialog_info = ui::DialogInfo {
                     title: "Error",
                     message: format!("{}", e),
@@ -90,7 +89,7 @@ impl eframe::App for MyApp {
         }
 
         if self.active_task_id != -1 {
-            if let Err(e) = self.agent_tx.send(agent::AgentCommand::RequestElapsedTime) {
+            if let Err(e) = self.command_tx.send(agent::AgentCommand::RequestElapsedTime) {
                 self.dialog_info = ui::DialogInfo {
                     title: "Error",
                     message: format!("{}", e),
@@ -181,7 +180,7 @@ impl MyApp {
                             .on_hover_cursor(CursorIcon::PointingHand)
                             .clicked()
                         {
-                            if let Err(e) = self.agent_tx.send(agent::AgentCommand::AddTask {
+                            if let Err(e) = self.command_tx.send(agent::AgentCommand::AddTask {
                                 task: self.new_task.clone(),
                             }) {
                                 self.dialog_info = ui::DialogInfo {
@@ -270,7 +269,7 @@ impl MyApp {
                                                 .on_hover_text("Stop")
                                                 .clicked()
                                             {
-                                                if let Err(e) = self.agent_tx.send(
+                                                if let Err(e) = self.command_tx.send(
                                                     agent::AgentCommand::EndSession {
                                                         comment: self.session_comment.clone(),
                                                     },
@@ -291,7 +290,7 @@ impl MyApp {
                                                 .on_hover_text("Start")
                                                 .clicked()
                                             {
-                                                if let Err(e) = self.agent_tx.send(
+                                                if let Err(e) = self.command_tx.send(
                                                     agent::AgentCommand::StartSession {
                                                         id: task.t_id,
                                                     },

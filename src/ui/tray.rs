@@ -1,6 +1,8 @@
-use std::{sync::mpsc::Sender, time::Duration};
+use std::{
+    sync::mpsc::{Receiver, Sender},
+    time::Duration,
+};
 
-use crossbeam_channel::Receiver;
 use tray_icon::{
     Icon, TrayIcon, TrayIconBuilder,
     menu::{Menu, MenuEvent, MenuId, MenuItemBuilder},
@@ -21,7 +23,7 @@ pub struct Tray {
 }
 
 impl Tray {
-    pub fn new(command_tx: Sender<agent::AgentCommand>, event_rx: Receiver<ui::UIEvent>) -> Self {
+    pub fn new(command_tx: Sender<agent::AgentCommand>, tray_rx: Receiver<ui::UIEvent>) -> Self {
         let active_icon_data = ui::utils::load_icon_from_bytes(ACTIVE_ICON_BYTES);
         let idle_icon_data = ui::utils::load_icon_from_bytes(IDLE_ICON_BYTES);
 
@@ -56,7 +58,7 @@ impl Tray {
             active_icon,
             idle_icon,
             command_tx,
-            event_rx,
+            event_rx: tray_rx,
             quit,
             user_state,
         }

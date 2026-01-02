@@ -51,13 +51,18 @@ pub enum AgentCommand {
 
 pub fn start_agent(
     command_rx: mpsc::Receiver<AgentCommand>,
-    event_tx: crossbeam_channel::Sender<ui::viewmodels::UIEvent>,
-    ui_control_tx: mpsc::Sender<ui::viewmodels::UIControl>,
+    window_tx: crossbeam_channel::Sender<ui::UIEvent>,
+    tray_tx: mpsc::Sender<ui::UIEvent>,
+    ui_control_tx: mpsc::Sender<ui::UIControl>,
     settings: Arc<config::settings::Settings>,
 ) {
     let db_connection = storage::init_db(settings.clone()).unwrap();
     let mut agent_state = AgentState::new(db_connection);
     let mut running = true;
+
+    if settings.open_ui_at_start_up {
+        let _ = ui_control_tx.send(ui::UIControl::Show);
+    }
 
     while running {
         while let Ok(event) = command_rx.try_recv() {
@@ -86,27 +91,29 @@ pub fn start_agent(
                 AgentCommand::RequestTaskList => {
                     let task_list =
                         agent::tasks::get_all_tasks(&agent_state.db_connection).unwrap();
-                    event_tx
-                        .send(ui::viewmodels::UIEvent::TaskList { task_list })
-                        .unwrap();
+                    window_tx.send(ui::UIEvent::TaskList { task_list }).unwrap();
                 }
-                AgentCommand::RequestElapsedTime => event_tx
-                    .send(ui::viewmodels::UIEvent::ElapsedTime {
+                AgentCommand::RequestElapsedTime => window_tx
+                    .send(ui::UIEvent::ElapsedTime {
                         elapsed: agent_state.stop_watch.elapsed(),
                     })
                     .unwrap(),
                 AgentCommand::Quit => {
-                    let _ = event_tx.send(ui::viewmodels::UIEvent::Quit);
-                    let _ = ui_control_tx.send(ui::viewmodels::UIControl::Quit);
+                    let _ = window_tx.send(ui::UIEvent::Quit);
+                    let _ = tray_tx.send(ui::UIEvent::Quit);
+                    let _ = ui_control_tx.send(ui::UIControl::Quit);
                     running = false;
                 }
                 AgentCommand::ShowUI => {
-                    let _ = ui_control_tx.send(ui::viewmodels::UIControl::Show);
+                    let _ = ui_control_tx.send(ui::UIControl::Show);
                 }
                 AgentCommand::UserActivity { time_stamp } => {
                     agent_state.user_state = ui::UserState::Active;
                     agent_state.last_user_activity_time_stamp = time_stamp;
-                    let _ = event_tx.send(ui::UIEvent::UserState {
+                    let _ = window_tx.send(ui::UIEvent::UserState {
+                        state: agent_state.user_state,
+                    });
+                    let _ = tray_tx.send(ui::UIEvent::UserState {
                         state: agent_state.user_state,
                     });
 
@@ -122,20 +129,17 @@ pub fn start_agent(
         let now = chrono::Utc::now();
 
         if agent_state.user_state == ui::UserState::Active {
-            let time_out = if now >= idle_after {
+            if now >= idle_after {
                 agent_state.user_state = ui::UserState::Idle;
-                let _ = event_tx.send(ui::UIEvent::UserState {
+                let _ = window_tx.send(ui::UIEvent::UserState {
+                    state: agent_state.user_state,
+                });
+                let _ = tray_tx.send(ui::UIEvent::UserState {
                     state: agent_state.user_state,
                 });
                 agent_state.stop_watch.stop();
-                chrono::TimeDelta::zero()
-            } else {
-                idle_after - now
+                let _ = window_tx.send(ui::UIEvent::Repaint { time_out: 0 });
             };
-
-            let _ = event_tx.send(ui::UIEvent::Repaint {
-                time_out: time_out.num_seconds() as u64,
-            });
         }
     }
 }
